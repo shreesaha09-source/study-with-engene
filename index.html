@@ -417,7 +417,7 @@ window.STUDYVERSE_SUPABASE_KEY = 'sb_publishable_5JAe5LX_hg8PAhPY7q8usQ_pTw7oCDP
     if(title.length<3){status.textContent='Give the idea a short title first.';return;}
     btn.disabled=true;const {error}=await client.from('feature_requests').insert({title,description,submitted_by:currentUser?.id||null});btn.disabled=false;
     if(error){status.textContent='Could not submit the idea: '+error.message;return;}
-    status.textContent='Idea submitted! ✨';box.querySelector('#svFeatureTitle').value='';box.querySelector('#svFeatureDesc').value='';
+    status.textContent='Idea submitted! ';box.querySelector('#svFeatureTitle').value='';box.querySelector('#svFeatureDesc').value='';
   };
 
   async function creatorPanel(){
