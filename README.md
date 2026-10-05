@@ -1,50 +1,86 @@
-# ENGENE Studyverse 🖤
+# 🌌 ENGENE STUDYVERSE 🖤
 
-A cozy ENGENE study space designed to make studying a little more motivating. Plan tasks, build study streaks, track your progress, customize your space, and study alongside your chosen ENHYPEN companion.
+A cozy ENHYPEN-themed study space made to make studying a little more motivating.
 
-## ✦ What is included
+Studyverse lets you plan tasks, track your study progress, build streaks, customize your space, and study alongside your chosen ENHYPEN companion.
+
+## ✦ Features
 
 - 🌌 ENHYPEN-themed study dashboard
-- 🧑‍🤝‍🧑 Choose your ENHYPEN companion and have them appear throughout your Studyverse
-- 📚 To-do list, task management, study planning, and progress tracking
-- ⏱️ Study timer with Study With Member videos
-- 🎬 YouTube study videos that play alongside timed study sessions and automatically clean up when a session ends, resets, closes, or is left
-- 📝 Add subjects using suggested options or enter your own
-- 🎨 Customizable accent colours that update the main UI
-- 🖼️ Custom backgrounds with automatic browser-side optimization
-- ☁️ Optional account support with Google or email login
-- 🌍 Community Reach and feedback features
-- 💡 Feature Ideas and community voting
-- 💾 Local browser storage with export/import support
-- 📱 PWA support for installing Studyverse as an app
+- 🧑‍🤝‍🧑 Choose your ENHYPEN study companion
+- 📚 To-do list and task management
+- 📅 Study planning and calendar features
+- ⏱️ Study timer
+- 🎬 Member-specific Study With Me videos
+- 🔁 Videos automatically stop when a study session ends
+- 📊 Study progress tracking
+- 🔥 Day streak tracking
+- 🎨 Custom accent colours
+- 🖼️ Custom background/wallpaper support
+- ☁️ Optional Google and email login
+- 🌍 Community Reach
+- 💌 Feedback
+- 💡 Feature Ideas
+- 👍 Community feature voting
+- 💾 Local data storage and backup
+- 📱 Mobile-friendly design
+- 🌐 GitHub Pages support
+
+## ✦ ENHYPEN Companions
+
+Study alongside:
+
+- 🐈 Jungwon — WONCHU
+- 🐈‍⬛ Heeseung — Hamseung
+- 🦅 Jay — NoxStar
+- 🐶 Jake — JAKEY
+- 🐧 Sunghoon — SnoWe
+- 🦊 Sunoo — KISHU
+- 🐆 Ni-ki — PU-NI
+- 🖤 ENHYPEN — ENHYPEN
+
+## ✦ Study With Member Videos
+
+Each companion has their own study video that can appear during a timed study session.
+
+The video is automatically removed/stopped when the session ends, is stopped, or the timer is closed.
+
+## ✦ Community Features
+
+Studyverse includes optional cloud-powered community features:
+
+- 👀 Community reach tracking
+- 💌 Feedback submissions
+- 💡 Feature requests
+- 👍 Feature voting
+- 🔐 Google authentication
+- ✉️ Email authentication
+
+Guest mode remains available for users who do not want to create an account.
+
+## ✦ Privacy
+
+Studyverse's main study data can be used locally in the browser.
+
+Account and community features use Supabase.
+
+No service-role or secret Supabase keys should ever be placed in the frontend.
 
 ## ✦ GitHub Pages
 
-Upload the project files to the root of a GitHub repository and enable:
+Studyverse is designed to run as a static GitHub Pages website.
 
-**Settings → Pages → Deploy from a branch → `main` → `/ (root)**
+The project should be uploaded with `index.html` in the repository root.
 
-Once deployed, use the HTTPS GitHub Pages URL to access and share Studyverse.
+GitHub Pages should be configured to deploy from:
 
-For embedded YouTube videos to work correctly, test the project through the deployed HTTPS site rather than opening `index.html` directly with a `file:///` URL.
+**Branch:** `update-1`
 
-## ✦ Accounts & Privacy
-
-Studyverse can be used as a guest or with an account.
-
-Guest mode keeps the app's main study data stored locally in the browser. Account functionality allows Studyverse to provide features such as community participation and prepares the app for future cross-device functionality.
-
-The project does not require precise location information for its community features.
-
-## ✦ Third-party content
-
-ENHYPEN-related images, character artwork, and YouTube videos may contain third-party content. Their respective owners retain the rights to their original materials.
-
-If this repository is distributed under the MIT License, that license applies only to the original code and other materials owned by the project author. It does **not** grant ownership or licensing rights to third-party media.
+**Folder:** `/ (root)`
 
 ## ✦ Companion Images
 
-The companion mascot images supplied with the project are included as:
+The project includes:
 
 - `member-jungwon.png`
 - `member-heeseung.png`
@@ -55,4 +91,14 @@ The companion mascot images supplied with the project are included as:
 - `member-niki.png`
 - `member-group.png`
 
-These images are used to represent the selectable ENHYPEN companions throughout Studyverse.
+## ✦ Third-Party Content
+
+ENHYPEN-related names, images, artwork, and videos may contain third-party content.
+
+Their respective owners retain the rights to their original materials.
+
+The original Studyverse code and project materials remain separate from rights to third-party media.
+
+---
+
+Made with 🖤 for ENGENEs who want to study a little better.
