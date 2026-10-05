@@ -1,34 +1,58 @@
 # ENGENE Studyverse 🖤
 
-## Final v16 member-name polish
+A cozy ENGENE study space designed to make studying a little more motivating. Plan tasks, build study streaks, track your progress, customize your space, and study alongside your chosen ENHYPEN companion.
 
-A cozy ENGENE study space for planning tasks, building streaks, tracking progress, and studying alongside your chosen ENHYPEN companion.
+## ✦ What is included
 
-## What is included
+- 🌌 ENHYPEN-themed study dashboard
+- 🧑‍🤝‍🧑 Choose your ENHYPEN companion and have them appear throughout your Studyverse
+- 📚 To-do list, task management, study planning, and progress tracking
+- ⏱️ Study timer with Study With Member videos
+- 🎬 YouTube study videos that play alongside timed study sessions and automatically clean up when a session ends, resets, closes, or is left
+- 📝 Add subjects using suggested options or enter your own
+- 🎨 Customizable accent colours that update the main UI
+- 🖼️ Custom backgrounds with automatic browser-side optimization
+- ☁️ Optional account support with Google or email login
+- 🌍 Community Reach and feedback features
+- 💡 Feature Ideas and community voting
+- 💾 Local browser storage with export/import support
+- 📱 PWA support for installing Studyverse as an app
 
-- ENHYPEN-themed study dashboard
-- Member selection with a matching companion character on the home screen
-- Study-with-member YouTube videos that loop for the full timed session
-- Video cleanup when a timer/session is stopped, reset, closed, completed, or left
-- Subject entry by either a dropdown suggestion or free typing
-- Accent colours that drive the app's main accent-red UI elements
-- Custom backgrounds with automatic browser-side optimization
-- PWA install support
-- Export/import and local browser data storage
+## ✦ GitHub Pages
 
-## GitHub Pages
+Upload the project files to the root of a GitHub repository and enable:
 
-Upload the contents of this folder to the root of a GitHub repository, then enable:
+**Settings → Pages → Deploy from a branch → `main` → `/ (root)**
 
-**Settings → Pages → Deploy from a branch → `main` → `/ (root)`**
+Once deployed, use the HTTPS GitHub Pages URL to access and share Studyverse.
 
-Use the HTTPS GitHub Pages URL to share the app. Do not open `index.html` directly with a `file:///` URL when testing the embedded videos.
+For embedded YouTube videos to work correctly, test the project through the deployed HTTPS site rather than opening `index.html` directly with a `file:///` URL.
 
-## Third-party content
+## ✦ Accounts & Privacy
 
-ENHYPEN-related images and YouTube videos are third-party content. Their respective owners retain their rights. The MIT license, when applied to this repository, covers only the original code you wrote or own, not third-party media.
+Studyverse can be used as a guest or with an account.
 
-## Companion images
+Guest mode keeps the app's main study data stored locally in the browser. Account functionality allows Studyverse to provide features such as community participation and prepares the app for future cross-device functionality.
 
-The member mascot images supplied by the project owner are included as:
-`member-jungwon.png`, `member-heeseung.png`, `member-jay.png`, `member-jake.png`, `member-sunghoon.png`, `member-sunoo.png`, `member-niki.png`, and `member-group.png`.
+The project does not require precise location information for its community features.
+
+## ✦ Third-party content
+
+ENHYPEN-related images, character artwork, and YouTube videos may contain third-party content. Their respective owners retain the rights to their original materials.
+
+If this repository is distributed under the MIT License, that license applies only to the original code and other materials owned by the project author. It does **not** grant ownership or licensing rights to third-party media.
+
+## ✦ Companion Images
+
+The companion mascot images supplied with the project are included as:
+
+- `member-jungwon.png`
+- `member-heeseung.png`
+- `member-jay.png`
+- `member-jake.png`
+- `member-sunghoon.png`
+- `member-sunoo.png`
+- `member-niki.png`
+- `member-group.png`
+
+These images are used to represent the selectable ENHYPEN companions throughout Studyverse.
