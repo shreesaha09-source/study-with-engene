@@ -445,16 +445,78 @@ window.STUDYVERSE_SUPABASE_KEY = 'sb_publishable_5JAe5LX_hg8PAhPY7q8usQ_pTw7oCDP
   }
 
   async function init(){
-    addStyles();
-    await recordVisit();
-    const {data}=await client.auth.getSession();currentUser=data.session?.user||null;
-    renderAccount();
-    client.auth.onAuthStateChange((_event,session)=>{currentUser=session?.user||null;renderAccount();addCreatorButton();});
-    hookSettings();
-    setTimeout(()=>{if(!currentUser)loginScreen(false);},900);
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-})();
 
+  addStyles();
+
+  recordVisit().catch(err=>{
+    console.warn(
+      'Visit analytics unavailable:',
+      err.message
+    );
+  });
+
+  try{
+
+    const {data} =
+      await client.auth.getSession();
+
+    currentUser =
+      data.session?.user || null;
+
+  }catch(err){
+
+    console.warn(
+      'Could not restore Studyverse session:',
+      err.message
+    );
+
+    currentUser = null;
+
+  }
+
+  renderAccount();
+
+  client.auth.onAuthStateChange(
+    (_event,session)=>{
+
+      currentUser =
+        session?.user || null;
+
+      renderAccount();
+
+      addCreatorButton();
+
+    }
+  );
+
+  hookSettings();
+
+  setTimeout(()=>{
+
+    if(!currentUser){
+
+      loginScreen(false);
+
+    }
+
+  },900);
+
+}
+
+
+if(document.readyState === 'loading'){
+
+  document.addEventListener(
+    'DOMContentLoaded',
+    init
+  );
+
+}else{
+
+  init();
+
+}
+
+})();
 </script>
 </body>
