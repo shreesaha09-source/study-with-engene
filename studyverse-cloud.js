@@ -7,31 +7,62 @@
   const URL = window.STUDYVERSE_SUPABASE_URL;
   const KEY = window.STUDYVERSE_SUPABASE_KEY;
 
-  if(!URL || !KEY || URL.includes('PASTE_YOUR') || KEY.includes('PASTE_YOUR')){
-    console.warn('Studyverse cloud layer is waiting for Supabase URL + publishable key.');
+  if(
+    !URL ||
+    !KEY ||
+    URL.includes('PASTE_YOUR') ||
+    KEY.includes('PASTE_YOUR')
+  ){
+
+    console.warn(
+      'Studyverse cloud layer is waiting for Supabase URL + publishable key.'
+    );
+
     return;
   }
+
 
   if(!window.supabase?.createClient){
-    console.error('Supabase JS library was not loaded.');
+
+    console.error(
+      'Supabase JS library was not loaded.'
+    );
+
     return;
   }
 
-  const client = window.supabase.createClient(URL, KEY, {
-    auth:{
-      persistSession:true,
-      autoRefreshToken:true,
-      detectSessionInUrl:true
-    }
-  });
+
+  const client =
+    window.supabase.createClient(
+      URL,
+      KEY,
+      {
+        auth:{
+          persistSession:true,
+          autoRefreshToken:true,
+          detectSessionInUrl:true
+        }
+      }
+    );
+
 
   window.studyverseClient = client;
 
-  const BASE_URL = location.origin + location.pathname;
 
-  const VISITOR_KEY = 'studyverse_visitor_id_v1';
-  const VISIT_KEY = 'studyverse_last_visit_v1';
-  const ENTRY_KEY = 'studyverse_entry_choice_v1';
+  const BASE_URL =
+    location.origin +
+    location.pathname;
+
+
+  const VISITOR_KEY =
+    'studyverse_visitor_id_v1';
+
+  const VISIT_KEY =
+    'studyverse_last_visit_v1';
+
+  const ENTRY_KEY =
+    'studyverse_entry_choice_v1';
+
 
   let currentUser = null;
 
@@ -41,13 +72,17 @@
      ========================================================= */
 
   const escCloud = s =>
-    String(s ?? '').replace(/[&<>"']/g,c=>({
-      '&':'&amp;',
-      '<':'&lt;',
-      '>':'&gt;',
-      '"':'&quot;',
-      "'":'&#039;'
-    }[c]));
+    String(s ?? '').replace(
+      /[&<>"']/g,
+      c => ({
+        '&':'&amp;',
+        '<':'&lt;',
+        '>':'&gt;',
+        '"':'&quot;',
+        "'":'&#039;'
+      }[c])
+    );
+
 
   const toastCloud = t =>
     typeof window.toast === 'function'
@@ -61,19 +96,31 @@
 
   function visitorId(){
 
-    let id = localStorage.getItem(VISITOR_KEY);
+    let id =
+      localStorage.getItem(
+        VISITOR_KEY
+      );
+
 
     if(!id){
 
       id =
-        (crypto.randomUUID
-          ? crypto.randomUUID()
-          : Date.now().toString(36) +
-            Math.random().toString(36).slice(2)
+        (
+          crypto.randomUUID
+            ? crypto.randomUUID()
+            : Date.now().toString(36) +
+              Math.random()
+                .toString(36)
+                .slice(2)
         ) + '';
 
-      localStorage.setItem(VISITOR_KEY,id);
+
+      localStorage.setItem(
+        VISITOR_KEY,
+        id
+      );
     }
+
 
     return id;
   }
@@ -81,69 +128,120 @@
 
   function source(){
 
-    const p = new URLSearchParams(location.search);
+    const p =
+      new URLSearchParams(
+        location.search
+      );
+
 
     return (
       p.get('ref') ||
       p.get('utm_source') ||
       'direct'
     )
-    .slice(0,40)
-    .replace(/[^a-zA-Z0-9_\- ]/g,'');
+      .slice(0,40)
+      .replace(
+        /[^a-zA-Z0-9_\- ]/g,
+        ''
+      );
   }
 
 
   async function recordVisit(){
 
-    const last = Number(
-      localStorage.getItem(VISIT_KEY) || 0
-    );
+    try{
 
-    if(Date.now() - last < 24 * 60 * 60 * 1000){
-      return;
-    }
+      const last =
+        Number(
+          localStorage.getItem(
+            VISIT_KEY
+          ) || 0
+        );
 
-    const {error} = await client
-      .from('site_visits')
-      .insert({
-        visitor_id:visitorId(),
-        source:source()
-      });
 
-    if(!error){
+      if(
+        Date.now() - last <
+        24 * 60 * 60 * 1000
+      ){
 
-      localStorage.setItem(
-        VISIT_KEY,
-        String(Date.now())
-      );
+        return;
+      }
 
-    }
 
-    if(error){
+      const {error} =
+        await client
+          .from('site_visits')
+          .insert({
+            visitor_id:visitorId(),
+            source:source()
+          });
+
+
+      if(!error){
+
+        localStorage.setItem(
+          VISIT_KEY,
+          String(Date.now())
+        );
+
+      }
+
+
+      if(error){
+
+        console.warn(
+          'Visit analytics unavailable:',
+          error.message
+        );
+
+      }
+
+    }catch(err){
+
       console.warn(
         'Visit analytics unavailable:',
-        error.message
+        err.message
       );
+
     }
   }
 
 
   async function getReach(){
 
-    const {data,error} =
-      await client.rpc('get_public_reach');
+    try{
 
-    if(error){
+      const {data,error} =
+        await client.rpc(
+          'get_public_reach'
+        );
+
+
+      if(error){
+
+        console.warn(
+          'Reach counter unavailable:',
+          error.message
+        );
+
+        return 0;
+      }
+
+
+      return Number(
+        data || 0
+      );
+
+    }catch(err){
 
       console.warn(
         'Reach counter unavailable:',
-        error.message
+        err.message
       );
 
       return 0;
-    }
 
-    return Number(data || 0);
+    }
   }
 
 
@@ -153,13 +251,25 @@
 
   function addStyles(){
 
-    if(document.getElementById('studyverseCloudStyles')){
+    if(
+      document.getElementById(
+        'studyverseCloudStyles'
+      )
+    ){
+
       return;
     }
 
-    const s = document.createElement('style');
 
-    s.id = 'studyverseCloudStyles';
+    const s =
+      document.createElement(
+        'style'
+      );
+
+
+    s.id =
+      'studyverseCloudStyles';
+
 
     s.textContent = `
 
@@ -179,6 +289,7 @@
         padding:18px;
       }
 
+
       .sv-community-head{
         display:flex;
         justify-content:space-between;
@@ -187,10 +298,12 @@
         flex-wrap:wrap;
       }
 
+
       .sv-community-head h3{
         margin:0;
         color:var(--accent-ink);
       }
+
 
       .sv-reach-number{
         font-size:30px;
@@ -198,6 +311,7 @@
         color:var(--accent-ink);
         margin:7px 0;
       }
+
 
       .sv-reach-bar{
         height:12px;
@@ -207,12 +321,14 @@
         margin:10px 0 7px;
       }
 
+
       .sv-reach-bar > div{
         height:100%;
         background:var(--accent);
         width:0;
         transition:width .6s ease;
       }
+
 
       .sv-modal{
         position:fixed;
@@ -224,6 +340,7 @@
         padding:18px;
         z-index:80;
       }
+
 
       .sv-box{
         width:min(720px,100%);
@@ -237,10 +354,12 @@
         color:var(--text);
       }
 
+
       .sv-box h2,
       .sv-box h3{
         color:var(--accent-ink);
       }
+
 
       .sv-actions{
         display:flex;
@@ -249,12 +368,14 @@
         margin-top:12px;
       }
 
+
       .sv-close{
         float:right;
         background:transparent !important;
         color:var(--accent-ink) !important;
         border:1px solid var(--border) !important;
       }
+
 
       .sv-account-pill{
         font-size:12px;
@@ -265,6 +386,7 @@
         border:1px solid #fff8;
       }
 
+
       .sv-feature{
         border:1px solid var(--border);
         border-radius:13px;
@@ -273,10 +395,12 @@
         background:#fff;
       }
 
+
       .sv-feature-title{
         font-weight:800;
         color:var(--accent-ink);
       }
+
 
       .sv-feature-meta{
         font-size:12px;
@@ -284,11 +408,13 @@
         margin-top:4px;
       }
 
+
       .sv-status{
         font-size:12px;
         color:var(--muted);
         margin-top:7px;
       }
+
 
       .sv-admin{
         background:linear-gradient(
@@ -298,6 +424,7 @@
         );
         border:2px solid var(--accent);
       }
+
 
       @media(max-width:600px){
 
@@ -309,7 +436,9 @@
 
     `;
 
+
     document.head.appendChild(s);
+
   }
 
 
@@ -321,33 +450,54 @@
 
     document
       .querySelectorAll('.sv-modal')
-      .forEach(x=>x.remove());
+      .forEach(
+        x => x.remove()
+      );
 
-    const wrap = document.createElement('div');
 
-    wrap.className = 'sv-modal';
+    const wrap =
+      document.createElement(
+        'div'
+      );
+
+
+    wrap.className =
+      'sv-modal';
+
 
     wrap.innerHTML =
       '<div class="sv-box">' +
       html +
       '</div>';
 
-    document.body.appendChild(wrap);
 
-    wrap.addEventListener('click',e=>{
+    document.body.appendChild(
+      wrap
+    );
 
-      if(e.target === wrap){
-        wrap.remove();
+
+    wrap.addEventListener(
+      'click',
+      e => {
+
+        if(e.target === wrap){
+
+          wrap.remove();
+
+        }
+
       }
+    );
 
-    });
 
     return wrap;
   }
 
 
   function closeModal(el){
+
     el?.remove();
+
   }
 
 
@@ -357,25 +507,44 @@
 
   async function googleLogin(){
 
-    const {error} =
-      await client.auth.signInWithOAuth({
+    try{
 
-        provider:'google',
+      const {error} =
+        await client.auth.signInWithOAuth({
 
-        options:{
-          redirectTo:BASE_URL
-        }
+          provider:'google',
 
-      });
+          options:{
 
-    if(error){
+            redirectTo:BASE_URL,
+
+            queryParams:{
+              prompt:'select_account'
+            }
+
+          }
+
+        });
+
+
+      if(error){
+
+        toastCloud(
+          'Google sign-in could not start: ' +
+          error.message
+        );
+
+      }
+
+    }catch(err){
 
       toastCloud(
         'Google sign-in could not start: ' +
-        error.message
+        (err.message || 'Unknown error')
       );
 
     }
+
   }
 
 
@@ -383,11 +552,20 @@
      EMAIL LOGIN
      ========================================================= */
 
-  async function emailLogin(email,box){
+  async function emailLogin(
+    email,
+    box
+  ){
 
-    email = String(email || '').trim();
+    email =
+      String(
+        email || ''
+      ).trim();
 
-    if(!/^\S+@\S+\.\S+$/.test(email)){
+
+    if(
+      !/^\S+@\S+\.\S+$/.test(email)
+    ){
 
       toastCloud(
         'Please enter a valid email address.'
@@ -396,31 +574,54 @@
       return;
     }
 
-    const {error} =
-      await client.auth.signInWithOtp({
 
-        email,
+    try{
 
-        options:{
-          emailRedirectTo:BASE_URL
-        }
+      const {error} =
+        await client.auth.signInWithOtp({
 
-      });
+          email,
 
-    if(error){
+          options:{
+            emailRedirectTo:BASE_URL
+          }
+
+        });
+
+
+      if(error){
+
+        toastCloud(
+          'Email sign-in could not start: ' +
+          error.message
+        );
+
+        return;
+      }
+
+
+      const status =
+        box.querySelector(
+          '.sv-email-status'
+        );
+
+
+      if(status){
+
+        status.textContent =
+          'Magic link sent. Check your email, then return to Studyverse. ✨';
+
+      }
+
+    }catch(err){
 
       toastCloud(
         'Email sign-in could not start: ' +
-        error.message
+        (err.message || 'Unknown error')
       );
 
-      return;
     }
 
-    box.querySelector(
-      '.sv-email-status'
-    ).textContent =
-      'Magic link sent. Check your email, then return to Studyverse. ✨';
   }
 
 
@@ -428,167 +629,245 @@
      LOGIN SCREEN
      ========================================================= */
 
-  function loginScreen(force=false){
+  function loginScreen(
+    force=false
+  ){
 
     if(
       !force &&
-      localStorage.getItem(ENTRY_KEY)
+      localStorage.getItem(
+        ENTRY_KEY
+      )
     ){
+
       return;
     }
 
-    if(currentUser && !force){
+
+    if(
+      currentUser &&
+      !force
+    ){
+
       return;
     }
 
-    const el = modal(`
 
-      <button
-        class="sv-close"
-        onclick="this.closest('.sv-modal').remove()"
-      >
-        ✕
-      </button>
+    const el =
+      modal(`
 
-      <div style="text-align:center;padding:10px 0 4px">
+        <button
+          class="sv-close"
+          onclick="
+            this.closest('.sv-modal').remove()
+          "
+        >
+          ✕
+        </button>
 
-        <div style="font-size:38px">
-          🌌
-        </div>
-
-        <h2 style="margin:5px 0">
-          STUDYVERSE
-        </h2>
-
-        <p class="small">
-          Your little corner of the universe
-          for getting things done.
-        </p>
 
         <div
-          class="sv-actions"
-          style="justify-content:center;margin-top:18px"
+          style="
+            text-align:center;
+            padding:10px 0 4px
+          "
         >
 
-          <button
-            onclick="window.studyverseGuest(this)"
+          <div
+            style="font-size:38px"
           >
-            Continue as Guest
-          </button>
+            🌌
+          </div>
+
+
+          <h2
+            style="margin:5px 0"
+          >
+            STUDYVERSE
+          </h2>
+
+
+          <p class="small">
+            Your little corner of the universe
+            for getting things done.
+          </p>
+
+
+          <div
+            class="sv-actions"
+            style="
+              justify-content:center;
+              margin-top:18px
+            "
+          >
+
+            <button
+              onclick="
+                window.studyverseGuest(this)
+              "
+            >
+              Continue as Guest
+            </button>
+
+          </div>
+
+
+          <div
+            class="small"
+            style="margin:15px 0"
+          >
+            ──────── or ────────
+          </div>
+
+
+          <div
+            class="sv-actions"
+            style="justify-content:center"
+          >
+
+            <button
+              onclick="
+                window.studyverseGoogle()
+              "
+            >
+              Continue with Google
+            </button>
+
+
+            <button
+              class="secondary"
+              onclick="
+                window.studyverseEmailLogin(this)
+              "
+            >
+              Continue with Email
+            </button>
+
+          </div>
+
+
+          <p class="sv-status">
+            Guest mode keeps data on this browser.
+            An account prepares Studyverse for
+            cross-device cloud sync.
+          </p>
 
         </div>
 
-        <div
-          class="small"
-          style="margin:15px 0"
-        >
-          ──────── or ────────
-        </div>
+      `);
 
-        <div
-          class="sv-actions"
-          style="justify-content:center"
-        >
 
-          <button
-            onclick="window.studyverseGoogle()"
-          >
-            Continue with Google
-          </button>
+    return el;
 
-          <button
-            class="secondary"
-            onclick="window.studyverseEmailLogin(this)"
-          >
-            Continue with Email
-          </button>
-
-        </div>
-
-        <p class="sv-status">
-          Guest mode keeps data on this browser.
-          An account prepares Studyverse for
-          cross-device cloud sync.
-        </p>
-
-      </div>
-
-    `);
-
-    el.querySelector(
-      '[onclick="window.studyverseEmailLogin(this)"]'
-    )?.addEventListener('click',()=>{});
   }
 
 
-  window.studyverseGuest = function(btn){
+  window.studyverseGuest =
+    function(btn){
 
-    localStorage.setItem(
-      ENTRY_KEY,
-      'guest'
-    );
-
-    btn
-      .closest('.sv-modal')
-      .remove();
-  };
+      localStorage.setItem(
+        ENTRY_KEY,
+        'guest'
+      );
 
 
-  window.studyverseGoogle = googleLogin;
+      btn
+        .closest('.sv-modal')
+        .remove();
+
+    };
 
 
-  window.studyverseEmailLogin = function(btn){
+  window.studyverseGoogle =
+    googleLogin;
 
-    const box =
-      btn.closest('.sv-box');
 
-    if(box.querySelector('.sv-email-area')){
-      return;
-    }
+  window.studyverseEmailLogin =
+    function(btn){
 
-    const area =
-      document.createElement('div');
-
-    area.className =
-      'sv-email-area';
-
-    area.innerHTML = `
-
-      <div style="margin-top:14px">
-
-        <input
-          class="sv-email"
-          type="email"
-          placeholder="you@example.com"
-          autocomplete="email"
-        >
-
-        <button
-          style="margin-top:8px"
-          class="small"
-        >
-          SEND MAGIC LINK
-        </button>
-
-        <div
-          class="sv-email-status sv-status"
-        ></div>
-
-      </div>
-
-    `;
-
-    box.appendChild(area);
-
-    area.querySelector('button').onclick =
-      () =>
-        emailLogin(
-          area.querySelector('.sv-email').value,
-          box
+      const box =
+        btn.closest(
+          '.sv-box'
         );
 
-    area.querySelector('.sv-email').focus();
-  };
+
+      if(
+        box.querySelector(
+          '.sv-email-area'
+        )
+      ){
+
+        return;
+      }
+
+
+      const area =
+        document.createElement(
+          'div'
+        );
+
+
+      area.className =
+        'sv-email-area';
+
+
+      area.innerHTML = `
+
+        <div
+          style="margin-top:14px"
+        >
+
+          <input
+            class="sv-email"
+            type="email"
+            placeholder="you@example.com"
+            autocomplete="email"
+          >
+
+
+          <button
+            style="margin-top:8px"
+            class="small"
+          >
+            SEND MAGIC LINK
+          </button>
+
+
+          <div
+            class="sv-email-status sv-status"
+          ></div>
+
+        </div>
+
+      `;
+
+
+      box.appendChild(
+        area
+      );
+
+
+      area
+        .querySelector(
+          'button'
+        )
+        .onclick =
+          () =>
+            emailLogin(
+              area.querySelector(
+                '.sv-email'
+              ).value,
+              box
+            );
+
+
+      area
+        .querySelector(
+          '.sv-email'
+        )
+        .focus();
+
+    };
 
 
   /* =========================================================
@@ -597,13 +876,27 @@
 
   async function signOut(){
 
-    await client.auth.signOut();
+    try{
 
-    toastCloud(
-      'Signed out. Your local Studyverse data is still here.'
-    );
+      await client.auth.signOut();
 
-    renderAccount();
+
+      toastCloud(
+        'Signed out. Your local Studyverse data is still here.'
+      );
+
+
+      renderAccount();
+
+    }catch(err){
+
+      toastCloud(
+        'Could not sign out: ' +
+        (err.message || 'Unknown error')
+      );
+
+    }
+
   }
 
 
@@ -614,6 +907,7 @@
         'svAccountButton'
       );
 
+
     if(!el){
 
       const actions =
@@ -621,37 +915,52 @@
           '.hero-actions'
         );
 
+
       if(!actions){
+
         return;
       }
 
+
       el =
-        document.createElement('button');
+        document.createElement(
+          'button'
+        );
+
 
       el.id =
         'svAccountButton';
 
+
       el.className =
         'ghost';
 
+
       el.style.cssText =
         'color:#fff;border-color:#fff8';
+
 
       actions.insertBefore(
         el,
         actions.firstChild
       );
+
     }
+
 
     if(currentUser){
 
       const label =
-        currentUser.user_metadata?.full_name ||
+        currentUser
+          .user_metadata
+          ?.full_name ||
         currentUser.email ||
         'Account';
 
+
       el.textContent =
         '👤 ' + label;
+
 
       el.onclick =
         () => accountModal();
@@ -661,9 +970,12 @@
       el.textContent =
         '👤 Guest';
 
+
       el.onclick =
         () => loginScreen(true);
+
     }
+
   }
 
 
@@ -672,31 +984,41 @@
     if(!currentUser){
 
       return loginScreen(true);
+
     }
+
 
     const name =
       escCloud(
-        currentUser.user_metadata?.full_name ||
+        currentUser
+          .user_metadata
+          ?.full_name ||
         'Studyverse member'
       );
+
 
     const email =
       escCloud(
         currentUser.email || ''
       );
 
+
     modal(`
 
       <button
         class="sv-close"
-        onclick="this.closest('.sv-modal').remove()"
+        onclick="
+          this.closest('.sv-modal').remove()
+        "
       >
         ✕
       </button>
 
+
       <h2>
         👤 Your Studyverse Account
       </h2>
+
 
       <p>
         <b>${name}</b>
@@ -706,12 +1028,14 @@
         </span>
       </p>
 
+
       <p class="sv-status">
         Signed in with your Studyverse account.
         Your current local tasks remain on this
         browser; cloud task syncing is the next
         layer we can add.
       </p>
+
 
       <div class="sv-actions">
 
@@ -728,10 +1052,12 @@
       </div>
 
     `);
+
   }
 
 
-  window.studyverseSignOut = signOut;
+  window.studyverseSignOut =
+    signOut;
 
 
   /* =========================================================
@@ -743,31 +1069,45 @@
     const settingsGrid =
       document.querySelector(
         '#settings .settings-grid'
+      ) ||
+      document.querySelector(
+        '#settings'
       );
 
+
     if(!settingsGrid){
+
       return;
     }
+
 
     let card =
       document.getElementById(
         'svCommunityCard'
       );
 
+
     if(!card){
 
       card =
-        document.createElement('div');
+        document.createElement(
+          'div'
+        );
+
 
       card.id =
         'svCommunityCard';
 
+
       card.className =
         'setting sv-community-card';
 
+
       card.innerHTML = `
 
-        <div class="sv-community-head">
+        <div
+          class="sv-community-head"
+        >
 
           <div>
 
@@ -775,12 +1115,14 @@
               🌍 Studyverse Community
             </h3>
 
+
             <p class="small">
               A little study space that keeps
               growing, one student at a time.
             </p>
 
           </div>
+
 
           <div
             id="svReachNumber"
@@ -791,11 +1133,17 @@
 
         </div>
 
-        <div class="sv-reach-bar">
 
-          <div id="svReachFill"></div>
+        <div
+          class="sv-reach-bar"
+        >
+
+          <div
+            id="svReachFill"
+          ></div>
 
         </div>
+
 
         <div
           id="svReachText"
@@ -804,24 +1152,35 @@
           Checking the latest community milestone…
         </div>
 
-        <div class="sv-actions">
+
+        <div
+          class="sv-actions"
+        >
 
           <button
-            onclick="window.studyverseShare()"
+            onclick="
+              window.studyverseShare()
+            "
           >
             ✨ Share Studyverse
           </button>
 
+
           <button
             class="secondary"
-            onclick="window.studyverseFeedback()"
+            onclick="
+              window.studyverseFeedback()
+            "
           >
             💌 Help Shape Studyverse
           </button>
 
+
           <button
             class="ghost"
-            onclick="window.studyverseFeatures()"
+            onclick="
+              window.studyverseFeatures()
+            "
           >
             🗳️ Feature Ideas
           </button>
@@ -830,12 +1189,17 @@
 
       `;
 
-      settingsGrid.appendChild(card);
+
+      settingsGrid.appendChild(
+        card
+      );
+
     }
 
 
     const reach =
       await getReach();
+
 
     const milestones = [
       10,
@@ -850,18 +1214,25 @@
       100000
     ];
 
+
     let next =
       milestones.find(
         x => x > reach
       ) ||
       Math.ceil(
-        (reach + 1) / 100000
+        (reach + 1) /
+        100000
       ) * 100000;
+
 
     let prev =
       milestones
-        .filter(x => x <= reach)
-        .pop() || 0;
+        .filter(
+          x => x <= reach
+        )
+        .pop() ||
+      0;
+
 
     const pct =
       next > prev
@@ -869,36 +1240,65 @@
             0,
             Math.min(
               100,
-              ((reach - prev) /
-              (next - prev)) * 100
+              (
+                (reach - prev) /
+                (next - prev)
+              ) * 100
             )
           )
         : 100;
 
 
-    document.getElementById(
-      'svReachNumber'
-    ).textContent =
-      (reach || 0).toLocaleString() +
-      '+ reached';
+    const number =
+      document.getElementById(
+        'svReachNumber'
+      );
 
 
-    document.getElementById(
-      'svReachFill'
-    ).style.width =
-      pct + '%';
+    const fill =
+      document.getElementById(
+        'svReachFill'
+      );
 
 
-    document.getElementById(
-      'svReachText'
-    ).textContent =
-      reach < next
-        ? (
-            (next - reach).toLocaleString() +
-            ' more to the next milestone • ' +
-            '✨ Help Studyverse reach more students'
-          )
-        : 'New milestone reached! ✨';
+    const text =
+      document.getElementById(
+        'svReachText'
+      );
+
+
+    if(number){
+
+      number.textContent =
+        (reach || 0)
+          .toLocaleString() +
+        '+ reached';
+
+    }
+
+
+    if(fill){
+
+      fill.style.width =
+        pct + '%';
+
+    }
+
+
+    if(text){
+
+      text.textContent =
+        reach < next
+          ? (
+              (next - reach)
+                .toLocaleString() +
+              ' more to the next milestone • ' +
+              '✨ Help Studyverse reach more students'
+            )
+          : 'New milestone reached! ✨';
+
+    }
+
   }
 
 
@@ -906,143 +1306,183 @@
      SHARE
      ========================================================= */
 
-  window.studyverseShare = async function(){
+  window.studyverseShare =
+    async function(){
 
-    const shareUrl =
-      BASE_URL + '?ref=share';
+      const shareUrl =
+        BASE_URL +
+        '?ref=share';
 
-    const text =
-      '🌌 I found Studyverse, a study planner with tasks, study plans, timers, calendars and study companions. You might like it!';
 
-    try{
+      const text =
+        '🌌 I found Studyverse, a study planner with tasks, study plans, timers, calendars and study companions. You might like it!';
 
-      if(navigator.share){
 
-        await navigator.share({
-          title:'ENGENE Studyverse',
-          text,
-          url:shareUrl
-        });
+      try{
 
-      }else{
+        if(navigator.share){
 
-        await navigator.clipboard.writeText(
-          shareUrl
-        );
+          await navigator.share({
 
-        toastCloud(
-          'Studyverse link copied! ✨'
-        );
+            title:
+              'ENGENE Studyverse',
+
+            text,
+
+            url:shareUrl
+
+          });
+
+        }else{
+
+          await navigator.clipboard.writeText(
+            shareUrl
+          );
+
+
+          toastCloud(
+            'Studyverse link copied! ✨'
+          );
+
+        }
+
+      }catch(e){
+
+        /* User cancelled share or browser blocked it. */
+
       }
 
-    }catch(e){}
-  };
+    };
 
 
   /* =========================================================
      FEEDBACK
      ========================================================= */
 
-  window.studyverseFeedback = function(){
+  window.studyverseFeedback =
+    function(){
 
-    modal(`
-
-      <button
-        class="sv-close"
-        onclick="this.closest('.sv-modal').remove()"
-      >
-        ✕
-      </button>
-
-      <h2>
-        💌 Help Shape Studyverse
-      </h2>
-
-      <p class="small">
-        You use it. You tell me what could be
-        better. I build it. Ideas, bugs, design
-        thoughts, study features, anything useful.
-      </p>
-
-      <label>
-        Category
-      </label>
-
-      <select id="svFeedbackCategory">
-
-        <option>
-          Feature idea
-        </option>
-
-        <option>
-          Bug / problem
-        </option>
-
-        <option>
-          Design / UI
-        </option>
-
-        <option>
-          Study feature
-        </option>
-
-        <option>
-          Companion feature
-        </option>
-
-        <option>
-          General feedback
-        </option>
-
-      </select>
-
-      <br><br>
-
-      <label>
-        Your feedback
-      </label>
-
-      <textarea
-        id="svFeedbackText"
-        maxlength="2000"
-        rows="7"
-        placeholder="What would you change, add, improve, or fix?"
-      ></textarea>
-
-      <div class="sv-actions">
+      modal(`
 
         <button
-          onclick="window.studyverseSendFeedback(this)"
+          class="sv-close"
+          onclick="
+            this.closest('.sv-modal').remove()
+          "
         >
-          SEND FEEDBACK
+          ✕
         </button>
 
-      </div>
 
-      <div
-        id="svFeedbackStatus"
-        class="sv-status"
-      ></div>
+        <h2>
+          💌 Help Shape Studyverse
+        </h2>
 
-    `);
-  };
+
+        <p class="small">
+          You use it. You tell me what could be
+          better. I build it. Ideas, bugs, design
+          thoughts, study features, anything useful.
+        </p>
+
+
+        <label>
+          Category
+        </label>
+
+
+        <select
+          id="svFeedbackCategory"
+        >
+
+          <option>
+            Feature idea
+          </option>
+
+          <option>
+            Bug / problem
+          </option>
+
+          <option>
+            Design / UI
+          </option>
+
+          <option>
+            Study feature
+          </option>
+
+          <option>
+            Companion feature
+          </option>
+
+          <option>
+            General feedback
+          </option>
+
+        </select>
+
+
+        <br><br>
+
+
+        <label>
+          Your feedback
+        </label>
+
+
+        <textarea
+          id="svFeedbackText"
+          maxlength="2000"
+          rows="7"
+          placeholder="What would you change, add, improve, or fix?"
+        ></textarea>
+
+
+        <div
+          class="sv-actions"
+        >
+
+          <button
+            onclick="
+              window.studyverseSendFeedback(this)
+            "
+          >
+            SEND FEEDBACK
+          </button>
+
+        </div>
+
+
+        <div
+          id="svFeedbackStatus"
+          class="sv-status"
+        ></div>
+
+      `);
+
+    };
 
 
   window.studyverseSendFeedback =
     async function(btn){
 
       const box =
-        btn.closest('.sv-box');
+        btn.closest(
+          '.sv-box'
+        );
+
 
       const category =
         box.querySelector(
           '#svFeedbackCategory'
         ).value;
 
+
       const message =
         box.querySelector(
           '#svFeedbackText'
         ).value.trim();
+
 
       const status =
         box.querySelector(
@@ -1050,7 +1490,9 @@
         );
 
 
-      if(message.length < 3){
+      if(
+        message.length < 3
+      ){
 
         status.textContent =
           'Please write a little more so I know what you mean. 🖤';
@@ -1059,41 +1501,66 @@
       }
 
 
-      btn.disabled = true;
+      btn.disabled =
+        true;
+
 
       status.textContent =
         'Sending…';
 
 
-      const {error} =
-        await client
-          .from('feedback')
-          .insert({
-            user_id:currentUser?.id || null,
-            category,
-            message
-          });
+      try{
+
+        const {error} =
+          await client
+            .from('feedback')
+            .insert({
+
+              user_id:
+                currentUser?.id ||
+                null,
+
+              category,
+
+              message
+
+            });
 
 
-      btn.disabled = false;
+        if(error){
+
+          status.textContent =
+            'Could not send feedback: ' +
+            error.message;
+
+          btn.disabled =
+            false;
+
+          return;
+        }
 
 
-      if(error){
+        status.textContent =
+          'Thank you! Your feedback is now in the Studyverse suggestion box. ✨';
+
+
+        box.querySelector(
+          '#svFeedbackText'
+        ).value = '';
+
+
+      }catch(err){
 
         status.textContent =
           'Could not send feedback: ' +
-          error.message;
+          (err.message || 'Unknown error');
 
-        return;
       }
 
 
-      status.textContent =
-        'Thank you! Your feedback is now in the Studyverse suggestion box. ✨';
+      btn.disabled =
+        false;
 
-      box.querySelector(
-        '#svFeedbackText'
-      ).value = '';
     };
 
 
@@ -1104,152 +1571,195 @@
   window.studyverseFeatures =
     async function(){
 
-      const {data,error} =
-        await client
-          .from('feature_requests')
-          .select(
-            'id,title,description,status,votes,created_at'
-          )
-          .order(
-            'votes',
-            {ascending:false}
-          )
-          .limit(30);
+      try{
+
+        const {data,error} =
+          await client
+            .from('feature_requests')
+            .select(
+              'id,title,description,status,votes,created_at'
+            )
+            .order(
+              'votes',
+              {
+                ascending:false
+              }
+            )
+            .limit(30);
 
 
-      if(error){
+        if(error){
+
+          toastCloud(
+            'Feature ideas could not be loaded.'
+          );
+
+          return;
+        }
+
+
+        const rows =
+          (data || [])
+            .map(
+              x => `
+
+                <div
+                  class="sv-feature"
+                >
+
+                  <div
+                    class="sv-feature-title"
+                  >
+                    ${escCloud(x.title)}
+                  </div>
+
+
+                  <div>
+                    ${escCloud(x.description)}
+                  </div>
+
+
+                  <div
+                    class="sv-feature-meta"
+                  >
+                    ${escCloud(x.status)}
+                    •
+                    ${Number(
+                      x.votes || 0
+                    )}
+                    votes
+                  </div>
+
+
+                  ${
+                    currentUser
+
+                    ? `
+
+                      <button
+                        class="small"
+                        style="margin-top:8px"
+                        onclick="
+                          window.studyverseVote(
+                            ${Number(x.id)},
+                            this
+                          )
+                        "
+                      >
+                        👍 Vote
+                      </button>
+
+                    `
+
+                    : `
+
+                      <div
+                        class="sv-status"
+                      >
+                        Log in to vote for an idea.
+                      </div>
+
+                    `
+                  }
+
+                </div>
+
+              `
+            )
+            .join('');
+
+
+        modal(`
+
+          <button
+            class="sv-close"
+            onclick="
+              this.closest('.sv-modal').remove()
+            "
+          >
+            ✕
+          </button>
+
+
+          <h2>
+            🗳️ Feature Ideas
+          </h2>
+
+
+          <p class="small">
+            Tell the coder what would make
+            Studyverse better. The most useful
+            ideas can become future updates.
+          </p>
+
+
+          <div>
+
+            ${
+              rows ||
+              '<div class="empty">No feature ideas yet. Be the first.</div>'
+            }
+
+          </div>
+
+
+          <hr>
+
+
+          <h3>
+            Submit an idea
+          </h3>
+
+
+          <input
+            id="svFeatureTitle"
+            maxlength="120"
+            placeholder="Short idea title"
+          >
+
+
+          <br><br>
+
+
+          <textarea
+            id="svFeatureDesc"
+            maxlength="2000"
+            rows="4"
+            placeholder="What should it do and why would it help?"
+          ></textarea>
+
+
+          <div
+            class="sv-actions"
+          >
+
+            <button
+              onclick="
+                window.studyverseSubmitFeature(this)
+              "
+            >
+              SUBMIT IDEA
+            </button>
+
+          </div>
+
+
+          <div
+            id="svFeatureStatus"
+            class="sv-status"
+          ></div>
+
+        `);
+
+
+      }catch(err){
 
         toastCloud(
           'Feature ideas could not be loaded.'
         );
 
-        return;
       }
 
-
-      const rows =
-        (data || [])
-          .map(x => `
-
-            <div class="sv-feature">
-
-              <div class="sv-feature-title">
-                ${escCloud(x.title)}
-              </div>
-
-              <div>
-                ${escCloud(x.description)}
-              </div>
-
-              <div class="sv-feature-meta">
-                ${escCloud(x.status)}
-                •
-                ${Number(x.votes || 0)}
-                votes
-              </div>
-
-              ${
-                currentUser
-
-                ? `
-
-                  <button
-                    class="small"
-                    style="margin-top:8px"
-                    onclick="
-                      window.studyverseVote(
-                        ${Number(x.id)},
-                        this
-                      )
-                    "
-                  >
-                    👍 Vote
-                  </button>
-
-                `
-
-                : `
-
-                  <div class="sv-status">
-                    Log in to vote for an idea.
-                  </div>
-
-                `
-              }
-
-            </div>
-
-          `)
-          .join('');
-
-
-      modal(`
-
-        <button
-          class="sv-close"
-          onclick="this.closest('.sv-modal').remove()"
-        >
-          ✕
-        </button>
-
-        <h2>
-          🗳️ Feature Ideas
-        </h2>
-
-        <p class="small">
-          Tell the coder what would make
-          Studyverse better. The most useful
-          ideas can become future updates.
-        </p>
-
-        <div>
-
-          ${
-            rows ||
-            '<div class="empty">No feature ideas yet. Be the first.</div>'
-          }
-
-        </div>
-
-        <hr>
-
-        <h3>
-          Submit an idea
-        </h3>
-
-        <input
-          id="svFeatureTitle"
-          maxlength="120"
-          placeholder="Short idea title"
-        >
-
-        <br><br>
-
-        <textarea
-          id="svFeatureDesc"
-          maxlength="2000"
-          rows="4"
-          placeholder="What should it do and why would it help?"
-        ></textarea>
-
-        <div class="sv-actions">
-
-          <button
-            onclick="
-              window.studyverseSubmitFeature(this)
-            "
-          >
-            SUBMIT IDEA
-          </button>
-
-        </div>
-
-        <div
-          id="svFeatureStatus"
-          class="sv-status"
-        ></div>
-
-      `);
     };
 
 
@@ -1258,34 +1768,52 @@
      ========================================================= */
 
   window.studyverseVote =
-    async function(id,btn){
+    async function(
+      id,
+      btn
+    ){
 
-      btn.disabled = true;
-
-      const {error} =
-        await client.rpc(
-          'vote_for_feature',
-          {
-            p_feature_id:id
-          }
-        );
+      btn.disabled =
+        true;
 
 
-      if(error){
+      try{
+
+        const {error} =
+          await client.rpc(
+            'vote_for_feature',
+            {
+              p_feature_id:id
+            }
+          );
+
+
+        if(error){
+
+          toastCloud(
+            'Vote could not be recorded.'
+          );
+
+        }else{
+
+          toastCloud(
+            'Vote counted! 🖤'
+          );
+
+        }
+
+      }catch(err){
 
         toastCloud(
           'Vote could not be recorded.'
         );
 
-      }else{
-
-        toastCloud(
-          'Vote counted! 🖤'
-        );
       }
 
 
-      btn.disabled = false;
+      btn.disabled =
+        false;
+
     };
 
 
@@ -1297,17 +1825,22 @@
     async function(btn){
 
       const box =
-        btn.closest('.sv-box');
+        btn.closest(
+          '.sv-box'
+        );
+
 
       const title =
         box.querySelector(
           '#svFeatureTitle'
         ).value.trim();
 
+
       const description =
         box.querySelector(
           '#svFeatureDesc'
         ).value.trim();
+
 
       const status =
         box.querySelector(
@@ -1315,7 +1848,9 @@
         );
 
 
-      if(title.length < 3){
+      if(
+        title.length < 3
+      ){
 
         status.textContent =
           'Give the idea a short title first.';
@@ -1324,44 +1859,67 @@
       }
 
 
-      btn.disabled = true;
+      btn.disabled =
+        true;
 
 
-      const {error} =
-        await client
-          .from('feature_requests')
-          .insert({
-            title,
-            description,
-            submitted_by:
-              currentUser?.id || null
-          });
+      try{
+
+        const {error} =
+          await client
+            .from('feature_requests')
+            .insert({
+
+              title,
+
+              description,
+
+              submitted_by:
+                currentUser?.id ||
+                null
+
+            });
 
 
-      btn.disabled = false;
+        if(error){
+
+          status.textContent =
+            'Could not submit the idea: ' +
+            error.message;
+
+          btn.disabled =
+            false;
+
+          return;
+        }
 
 
-      if(error){
+        status.textContent =
+          'Idea submitted! ✨';
+
+
+        box.querySelector(
+          '#svFeatureTitle'
+        ).value = '';
+
+
+        box.querySelector(
+          '#svFeatureDesc'
+        ).value = '';
+
+
+      }catch(err){
 
         status.textContent =
           'Could not submit the idea: ' +
-          error.message;
+          (err.message || 'Unknown error');
 
-        return;
       }
 
 
-      status.textContent =
-        'Idea submitted! ✨';
+      btn.disabled =
+        false;
 
-
-      box.querySelector(
-        '#svFeatureTitle'
-      ).value = '';
-
-      box.querySelector(
-        '#svFeatureDesc'
-      ).value = '';
     };
 
 
@@ -1372,111 +1930,142 @@
   async function creatorPanel(){
 
     if(!currentUser){
+
       return;
     }
 
 
-    const {data,error} =
-      await client.rpc(
-        'get_creator_stats'
-      );
+    try{
+
+      const {data,error} =
+        await client.rpc(
+          'get_creator_stats'
+        );
 
 
-    if(error || !data){
+      if(error || !data){
+
+        toastCloud(
+          'Creator analytics are not available for this account.'
+        );
+
+        return;
+      }
+
+
+      const d =
+        data;
+
+
+      modal(`
+
+        <button
+          class="sv-close"
+          onclick="
+            this.closest('.sv-modal').remove()
+          "
+        >
+          ✕
+        </button>
+
+
+        <div
+          class="sv-admin"
+        >
+
+          <h2>
+            🔐 Creator Analytics
+          </h2>
+
+
+          <p class="small">
+            Private Studyverse creator view.
+          </p>
+
+
+          <div
+            class="statgrid"
+          >
+
+            <div
+              class="stat"
+            >
+
+              <b>
+                ${Number(
+                  d.visits || 0
+                ).toLocaleString()}
+              </b>
+
+              Visits recorded
+
+            </div>
+
+
+            <div
+              class="stat"
+            >
+
+              <b>
+                ${Number(
+                  d.unique_visitors || 0
+                ).toLocaleString()}
+              </b>
+
+              Unique visitors
+
+            </div>
+
+
+            <div
+              class="stat"
+            >
+
+              <b>
+                ${Number(
+                  d.feedback || 0
+                ).toLocaleString()}
+              </b>
+
+              Feedback messages
+
+            </div>
+
+
+            <div
+              class="stat"
+            >
+
+              <b>
+                ${Number(
+                  d.feature_requests || 0
+                ).toLocaleString()}
+              </b>
+
+              Feature ideas
+
+            </div>
+
+          </div>
+
+
+          <p class="sv-status">
+            Detailed visitor rows and feedback
+            remain in your private Supabase dashboard.
+          </p>
+
+        </div>
+
+      `);
+
+    }catch(err){
 
       toastCloud(
         'Creator analytics are not available for this account.'
       );
 
-      return;
     }
 
-
-    const d = data;
-
-
-    modal(`
-
-      <button
-        class="sv-close"
-        onclick="this.closest('.sv-modal').remove()"
-      >
-        ✕
-      </button>
-
-      <div class="sv-admin">
-
-        <h2>
-          🔐 Creator Analytics
-        </h2>
-
-        <p class="small">
-          Private Studyverse creator view.
-        </p>
-
-        <div class="statgrid">
-
-          <div class="stat">
-
-            <b>
-              ${Number(
-                d.visitors || 0
-              ).toLocaleString()}
-            </b>
-
-            Visits recorded
-
-          </div>
-
-
-          <div class="stat">
-
-            <b>
-              ${Number(
-                d.unique_visitors || 0
-              ).toLocaleString()}
-            </b>
-
-            Unique visitors
-
-          </div>
-
-
-          <div class="stat">
-
-            <b>
-              ${Number(
-                d.feedback || 0
-              ).toLocaleString()}
-            </b>
-
-            Feedback messages
-
-          </div>
-
-
-          <div class="stat">
-
-            <b>
-              ${Number(
-                d.feature_requests || 0
-              ).toLocaleString()}
-            </b>
-
-            Feature ideas
-
-          </div>
-
-        </div>
-
-        <p class="sv-status">
-          Detailed visitor rows and feedback
-          remain in your private Supabase dashboard.
-        </p>
-
-      </div>
-
-    `);
   }
 
 
@@ -1491,6 +2080,7 @@
   function addCreatorButton(){
 
     if(!currentUser){
+
       return;
     }
 
@@ -1498,63 +2088,91 @@
     client
       .from('creator_admins')
       .select('user_id')
-      .eq('user_id',currentUser.id)
+      .eq(
+        'user_id',
+        currentUser.id
+      )
       .maybeSingle()
-      .then(({data})=>{
+      .then(
+        ({data,error}) => {
 
-        if(!data){
-          return;
-        }
+          if(error){
+
+            return;
+          }
 
 
-        const settingsGrid =
-          document.querySelector(
-            '#settings .settings-grid'
+          if(!data){
+
+            return;
+          }
+
+
+          const settingsGrid =
+            document.querySelector(
+              '#settings .settings-grid'
+            ) ||
+            document.querySelector(
+              '#settings'
+            );
+
+
+          if(
+            !settingsGrid ||
+            document.getElementById(
+              'svCreatorCard'
+            )
+          ){
+
+            return;
+          }
+
+
+          const card =
+            document.createElement(
+              'div'
+            );
+
+
+          card.id =
+            'svCreatorCard';
+
+
+          card.className =
+            'setting sv-admin';
+
+
+          card.innerHTML = `
+
+            <h3>
+              🔐 Creator Analytics
+            </h3>
+
+
+            <p class="small">
+              Private. Only your creator account
+              can open this.
+            </p>
+
+
+            <button
+              onclick="
+                window.studyverseCreatorPanel()
+              "
+            >
+              OPEN CREATOR ANALYTICS
+            </button>
+
+          `;
+
+
+          settingsGrid.appendChild(
+            card
           );
 
-
-        if(
-          !settingsGrid ||
-          document.getElementById(
-            'svCreatorCard'
-          )
-        ){
-          return;
         }
+      );
 
-
-        const card =
-          document.createElement('div');
-
-        card.id =
-          'svCreatorCard';
-
-        card.className =
-          'setting sv-admin';
-
-        card.innerHTML = `
-
-          <h3>
-            🔐 Creator Analytics
-          </h3>
-
-          <p class="small">
-            Private. Only your creator account
-            can open this.
-          </p>
-
-          <button
-            onclick="
-              window.studyverseCreatorPanel()
-            "
-          >
-            OPEN CREATOR ANALYTICS
-          </button>
-
-        `;
-
-        settingsGrid.appendChild(card);
-      });
   }
 
 
@@ -1565,21 +2183,31 @@
   function hookSettings(){
 
     const obs =
-      new MutationObserver(()=>{
+      new MutationObserver(
+        () => {
 
-        if(
-          document.getElementById('settings') &&
-          !document.getElementById(
-            'svCommunityCard'
-          )
-        ){
+          const settings =
+            document.getElementById(
+              'settings'
+            );
 
-          communityCard();
+
+          if(
+            settings &&
+            !document.getElementById(
+              'svCommunityCard'
+            )
+          ){
+
+            communityCard();
+
+          }
+
+
+          addCreatorButton();
+
         }
-
-        addCreatorButton();
-
-      });
+      );
 
 
     obs.observe(
@@ -1595,6 +2223,7 @@
       () => communityCard(),
       500
     );
+
   }
 
 
@@ -1606,28 +2235,47 @@
 
     addStyles();
 
+
     await recordVisit();
 
 
-    const {data} =
-      await client.auth.getSession();
+    try{
 
-    currentUser =
-      data.session?.user || null;
+      const {data} =
+        await client.auth.getSession();
+
+
+      currentUser =
+        data.session?.user ||
+        null;
+
+    }catch(err){
+
+      currentUser =
+        null;
+
+    }
 
 
     renderAccount();
 
 
     client.auth.onAuthStateChange(
-      (_event,session)=>{
+      (
+        _event,
+        session
+      ) => {
 
         currentUser =
-          session?.user || null;
+          session?.user ||
+          null;
+
 
         renderAccount();
 
+
         addCreatorButton();
+
       }
     );
 
@@ -1635,18 +2283,27 @@
     hookSettings();
 
 
-    setTimeout(()=>{
+    setTimeout(
+      () => {
 
-      if(!currentUser){
-        loginScreen(false);
-      }
+        if(!currentUser){
 
-    },900);
+          loginScreen(
+            false
+          );
+
+        }
+
+      },
+      900
+    );
+
   }
 
 
   if(
-    document.readyState === 'loading'
+    document.readyState ===
+    'loading'
   ){
 
     document.addEventListener(
