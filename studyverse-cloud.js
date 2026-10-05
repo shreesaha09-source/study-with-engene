@@ -1032,8 +1032,7 @@
       <p class="sv-status">
         Signed in with your Studyverse account.
         Your current local tasks remain on this
-        browser; cloud task syncing is the next
-        layer we can add.
+        browser.
       </p>
 
 
