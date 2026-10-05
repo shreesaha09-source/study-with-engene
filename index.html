@@ -282,9 +282,21 @@ window.STUDYVERSE_SUPABASE_KEY = 'sb_publishable_5JAe5LX_hg8PAhPY7q8usQ_pTw7oCDP
   }
   function closeModal(el){el?.remove();}
 
-  async function googleLogin(){
-    const {error}=await client.auth.signInWithOAuth({provider:'google',options:{redirectTo:BASE_URL}});
-    if(error)toastCloud('Google sign-in could not start: '+error.message);
+ async function googleLogin(){
+    const {error}=await client.auth.signInWithOAuth({
+        provider:'google',
+        options:{
+            redirectTo:BASE_URL,
+            queryParams:{
+                prompt:'select_account'
+            }
+        }
+    });
+
+    if(error){
+        toastCloud('Google sign-in could not start: '+error.message);
+    }
+}
   }
   async function emailLogin(email,box){
     email=String(email||'').trim();
