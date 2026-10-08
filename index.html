@@ -7,6 +7,8 @@
 <meta name="theme-color" content="#741f3a">
 <meta name="description" content="ENGENE Studyverse — plan, focus, track progress, Go big or Go home">
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="wonchu-192.png">
+<link rel="apple-touch-icon" href="wonchu-192.png">
 <title>ENGENE Studyverse 🖤</title>
 <style>
 :root{--accent:#741f3a;--accent2:#741f3a;--accent-light:#a94d69;--accent-dark:#4b1526;--accent-faint:#f3d7e0;--accent-rgb:116,31,58;--accent-ink:#741f3a;--button-text:#fff;--bg:#fde8ee;--text:#32101c;--card:rgba(255,255,255,.40);--muted:#6a3b4b;--border:#e5b5c3;--good:#587d62;--shadow:0 10px 30px #0003}
@@ -315,6 +317,35 @@ tbody tr:nth-child(even){background:#fff9fb}tbody tr:hover{background:color-mix(
 @media(max-width:1050px){.dashboard{grid-template-columns:minmax(0,1fr);grid-template-areas:"intro" "stats" "companion" "notes"}.dashboard .statgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-notes-card{min-height:120px}}
 @media(max-width:700px){.dashboard{gap:12px}.dashboard .home-companion{grid-template-columns:100px minmax(0,1fr);padding:12px}.dashboard .home-companion-image{width:96px;height:100px}.dashboard-notes-card{min-height:100px;padding:15px}.whiteboard-toolbar{top:102px;left:10px;right:10px;max-width:none}.whiteboard-toolbar .study-canvas-tools{justify-content:center}.whiteboard-toolbar .study-canvas-tools input[type=range]{width:62px}}
 @media(max-width:420px){.dashboard .home-companion{grid-template-columns:1fr;text-align:center}.dashboard .home-companion-image{width:116px;height:116px}.dashboard-notes-card{grid-template-columns:44px minmax(0,1fr) auto;padding:12px;gap:9px}.dashboard-notes-icon{width:42px;height:42px}.dashboard-notes-copy b{font-size:18px}.dashboard .statgrid{grid-template-columns:1fr}.whiteboard-toolbar .study-canvas-tools{gap:3px}.whiteboard-toolbar .study-canvas-tools button{padding:6px 7px;font-size:10px}}
+.workspace-widget{min-width:190px;min-height:120px}
+.workspace-widget.focus-widget{min-width:260px;min-height:270px}
+.workspace-widget.note-widget{min-height:165px}
+.workspace-widget.media-widget{min-height:135px}
+.workspace-widget.exam-widget{min-width:220px;min-height:190px}
+.workspace-widget.sticker-widget{min-width:130px;min-height:105px}
+.workspace-widget-content{min-height:0;overflow:hidden}
+.note-body-input{overflow:hidden}
+.media-widget .workspace-widget-content{min-height:0;gap:0}
+.media-frame-wrap,.media-empty{min-height:0}
+.media-widget.has-media .media-set-row{position:absolute;z-index:4;left:14px;right:14px;bottom:14px;display:flex;padding:7px;border:1px solid #ffffff45;border-radius:13px;background:#29232eeb;box-shadow:0 8px 22px #0005;opacity:0;visibility:hidden;transform:translateY(5px);transition:opacity .16s ease,transform .16s ease,visibility .16s ease;pointer-events:none}
+.media-widget.has-media:hover .media-set-row,.media-widget.has-media:focus-within .media-set-row{opacity:1;visibility:visible;transform:none;pointer-events:auto}
+.media-widget:not(.has-media) .media-set-row{display:flex;flex:0 0 auto}
+.exam-widget .workspace-widget-content{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:11px 12px 16px;text-align:center}
+.exam-countdown-clock{width:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.exam-countdown-unit{min-width:0;padding:7px 3px 6px;border:1px solid #fff;border-radius:11px;background:linear-gradient(180deg,#fff,#f6edf4);box-shadow:0 4px 9px #39213a12}
+.exam-countdown-value{display:block;color:#743252;font:800 clamp(16px,5vw,25px)/1 Arial,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.exam-countdown-unit small{display:block;margin-top:4px;color:#987c8c;font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.exam-countdown-value.flip{animation:countdown-flip .38s ease both;transform-origin:50% 15%}
+@keyframes countdown-flip{0%{transform:rotateX(85deg);opacity:.25}100%{transform:rotateX(0);opacity:1}}
+.exam-widget input[data-exam-date]{width:100%;margin:0;padding:6px 8px;font-size:10px}
+.exam-widget .widget-substat{font-size:9px}
+#home.view.card{background:rgba(255,255,255,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#home .statgroup{background:rgba(255,255,255,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#home .stat{background:color-mix(in srgb,var(--accent-faint) 62%,transparent)}
+#home .home-companion{background:linear-gradient(125deg,color-mix(in srgb,var(--accent-faint) 58%,transparent),rgba(255,255,255,.6));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#home .dashboard-notes-card{background:linear-gradient(145deg,color-mix(in srgb,var(--accent-faint) 58%,transparent),rgba(255,255,255,.6));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#home .menu button{background:rgba(255,255,255,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#home .menu button:hover{background:color-mix(in srgb,var(--accent-faint) 72%,transparent)}
 </style>
 </head>
 <body>
@@ -322,7 +353,7 @@ tbody tr:nth-child(even){background:#fff9fb}tbody tr:hover{background:color-mix(
 <header class="hero"><div><h1>🖤 ENGENE STUDYVERSE</h1><p id="heroSub">Plan • Focus • Grow • Go big or Go home</p></div><div class="hero-actions"><button class="ghost" style="color:#fff;border-color:#fff8" onclick="showView('settings')">⚙️ Settings</button><button class="ghost" style="color:#fff;border-color:#fff8" onclick="showView('workspace')">✦ Desk Canvas</button></div></header>
 
 <section id="home" class="view card hidden">
-<div class="dashboard"><div class="dashboard-intro"><h2 id="greeting">GOOD EVENING 🖤</h2><p id="quote" class="quote"></p><div class="progress"><div id="progressBar"></div></div><p id="progressText" class="small"></p></div><div class="statgrid"><div class="statgroup"><div class="statgroup-title">📋 Tasks</div><div class="statgroup-inner"><div class="stat"><b id="statDone">0</b><span class="stat-label">Completed</span></div><div class="stat"><b id="statPending">0</b><span class="stat-label">Pending</span></div></div></div><div class="statgroup"><div class="statgroup-title">⏱️ Progress</div><div class="statgroup-inner"><div class="stat"><b id="statTime">0m</b><span class="stat-label">Study time</span></div><div class="stat"><b id="statStreak">0</b><span class="stat-label">Day streak</span></div></div></div></div><div id="homeCompanion" class="home-companion"><img id="homeCompanionImage" class="home-companion-image" src="member-jungwon.png" alt="Study companion"><div><div class="home-companion-kicker">Your study companion</div><h3 id="homeCompanionName">Jungwon</h3><p id="homeCompanionText">Jungwon is ready to study with you. 🖤</p><button class="small" onclick="showView('settings')">Change Companion</button></div></div><button class="dashboard-notes-card" onclick="showView('notes')"><span class="dashboard-notes-icon">🗒️</span><span class="dashboard-notes-copy"><b>Study Notes</b><small>Your thoughts, ideas, and little wins</small></span><span class="dashboard-notes-arrow" aria-hidden="true">↗</span></button></div>
+<div class="dashboard"><div class="dashboard-intro"><h2 id="greeting">GOOD EVENING 🖤</h2><p id="quote" class="quote"></p><div class="progress"><div id="progressBar"></div></div><p id="progressText" class="small"></p></div><div class="statgrid"><div class="statgroup"><div class="statgroup-title">📋 Tasks</div><div class="statgroup-inner"><div class="stat"><b id="statDone">0</b><span class="stat-label">Completed</span></div><div class="stat"><b id="statPending">0</b><span class="stat-label">Pending</span></div></div></div><div class="statgroup"><div class="statgroup-title">⏱️ Progress</div><div class="statgroup-inner"><div class="stat"><b id="statTime">0m</b><span class="stat-label">Study time</span></div><div class="stat"><b id="statStreak">0</b><span class="stat-label">Day streak</span></div></div></div></div><div id="homeCompanion" class="home-companion"><img id="homeCompanionImage" class="home-companion-image" src="wonchu.png" alt="Study companion"><div><div class="home-companion-kicker">Your study companion</div><h3 id="homeCompanionName">Jungwon</h3><p id="homeCompanionText">Jungwon is ready to study with you. 🖤</p><button class="small" onclick="showView('settings')">Change Companion</button></div></div><button class="dashboard-notes-card" onclick="showView('notes')"><span class="dashboard-notes-icon">🗒️</span><span class="dashboard-notes-copy"><b>Study Notes</b><small>Your thoughts, ideas, and little wins</small></span><span class="dashboard-notes-arrow" aria-hidden="true">↗</span></button></div>
 <div class="menu">
 <button onclick="showView('todo')">📝 To-Do List</button><button onclick="showView('manager')">📋 Task Manager</button><button onclick="showView('plan')">📚 Study Plan</button><button onclick="showView('timer')">⏱️ Study Timer</button><button onclick="showView('calendar')">📅 Calendar</button><button onclick="showView('achievements')">🏆 Achievements</button>
 </div>
@@ -425,7 +456,7 @@ function safeLocalSet(key,value){try{localStorage.setItem(key,value);return true
 function cleanText(value,max){return String(value??'').trim().slice(0,max);}
 function normalizeTasks(list){if(!Array.isArray(list))return [];const seen=new Set(),out=[];for(const raw of list){const no=Number(raw?.no),name=cleanText(raw?.name,160),subject=cleanText(raw?.subject,80),priority=['High','Medium','Low'].includes(raw?.priority)?raw.priority:'Medium',status=raw?.status==='Completed'?'Completed':'Pending',deadline=cleanText(raw?.deadline,20)||'No Deadline',duration=Number(raw?.duration);if(!Number.isInteger(no)||no<1||!name||!subject||seen.has(no))continue;seen.add(no);out.push({no,name,subject,priority,status,deadline,duration:Number.isFinite(duration)&&duration>0?Math.min(duration,1440):recommended(priority),created:raw?.created||new Date().toISOString(),completedAt:status==='Completed'&&raw?.completedAt?raw.completedAt:null});}return out.sort((a,b)=>a.no-b.no);}
 const members=['Jungwon','Heeseung','Jay','Jake','Sunghoon','Sunoo','Ni-ki','ENHYPEN (Group)'];
-const memberImages={'Jungwon':'member-jungwon.png','Heeseung':'member-heeseung.png','Jay':'member-jay.png','Jake':'member-jake.png','Sunghoon':'member-sunghoon.png','Sunoo':'member-sunoo.png','Ni-ki':'member-niki.png','ENHYPEN (Group)':'member-group.png'};
+const memberImages={'Jungwon':'wonchu.png','Heeseung':'member-heeseung.png','Jay':'member-jay.png','Jake':'member-jake.png','Sunghoon':'member-sunghoon.png','Sunoo':'member-sunoo.png','Ni-ki':'member-niki.png','ENHYPEN (Group)':'member-group.png'};
 const memberDisplayNames={'Jungwon':'WONCHU','Heeseung':'NoxStar','Jay':'Jay','Jake':'JAKEY','Sunghoon':'SnoWe','Sunoo':'KISHU','Ni-ki':'PU-NI','ENHYPEN (Group)':'ENHYPEN'};
 function memberDisplay(member){return memberDisplayNames[member]||member;}
 const subjectSuggestions=['Physics','Chemistry','Mathematics','Computer Science','English','Biology','History','Geography','Economics','Accountancy','Business Studies','Psychology','Sociology','Political Science','Hindi','Marathi','French','Computer Applications','Environmental Science'];
@@ -751,6 +782,157 @@ showView('home');
 initBackground();
 updateStorageMeter();
 if(!settings.name) setTimeout(showSetup,300);
+
+function workspaceMediaSrc(videoId){
+  return 'https://www.youtube-nocookie.com/embed/'+encodeURIComponent(videoId)+'?controls=1&rel=0&playsinline=1';
+}
+function examCountdownParts(dateValue,now=Date.now()){
+  if(!dateValue)return null;
+  const bits=String(dateValue).split('-').map(Number);
+  if(bits.length!==3||bits.some(n=>!Number.isFinite(n)))return null;
+  const target=new Date(bits[0],bits[1]-1,bits[2]).getTime();
+  if(!Number.isFinite(target))return null;
+  let left=Math.max(0,target-now);
+  const days=Math.floor(left/86400000);left-=days*86400000;
+  const hours=Math.floor(left/3600000);left-=hours*3600000;
+  const minutes=Math.floor(left/60000);left-=minutes*60000;
+  return{days,hours,minutes,seconds:Math.floor(left/1000)};
+}
+function examCountdownMarkup(w){
+  const values=[['days','DAYS'],['hours','HRS'],['minutes','MIN'],['seconds','SEC']];
+  return '<div class="workspace-widget-content"><div class="widget-kicker">🎓 EXAM COUNTDOWN</div>'+
+    '<div class="exam-countdown-empty widget-soft-message" '+(w.examDate?'hidden':'')+'>Make space for a goal you care about.</div>'+
+    '<div class="exam-countdown-clock" data-exam-countdown '+(!w.examDate?'hidden':'')+'>'+
+    values.map(([key,label])=>'<div class="exam-countdown-unit"><span class="exam-countdown-value" data-countdown-value="'+key+'">00</span><small>'+label+'</small></div>').join('')+
+    '</div><input data-exam-date type="date" value="'+esc(w.examDate||'')+'" aria-label="Exam date"><div class="widget-substat">A little closer every second ✦</div></div>';
+}
+function updateExamCountdownWidgets(){
+  document.querySelectorAll('.exam-widget[data-widget-id]').forEach(el=>{
+    const w=workspaceModel.widgets.find(item=>item.id===el.dataset.widgetId);
+    if(!w)return;
+    const empty=el.querySelector('.exam-countdown-empty'),clock=el.querySelector('[data-exam-countdown]');
+    const parts=examCountdownParts(w.examDate);
+    if(empty)empty.hidden=Boolean(parts);
+    if(clock)clock.hidden=!parts;
+    if(!parts)return;
+    Object.entries(parts).forEach(([unit,value])=>{
+      const digit=el.querySelector('[data-countdown-value="'+unit+'"]');
+      if(!digit)return;
+      const next=String(value).padStart(2,'0');
+      if(digit.dataset.lastValue===next)return;
+      digit.dataset.lastValue=next;
+      digit.classList.remove('flip');
+      void digit.offsetWidth;
+      digit.textContent=next;
+      digit.classList.add('flip');
+    });
+  });
+}
+function renderWorkspace(){
+  const root=document.getElementById('workspaceRoot'),layer=document.getElementById('workspaceWidgetLayer');
+  if(!root||!layer)return;
+  root.classList.toggle('drawer-open',workspaceModel.ui.drawerOpen);
+  root.classList.toggle('drawer-closed',!workspaceModel.ui.drawerOpen);
+  root.classList.toggle('grid-on',workspaceModel.ui.grid);
+  syncWorkspaceModes();
+  const visible=workspaceModel.widgets.filter(w=>w.visible).sort((a,b)=>a.z-b.z);
+  const liveIds=new Set(visible.map(w=>w.id));
+  Array.from(layer.children).forEach(el=>{if(!liveIds.has(el.dataset.widgetId))el.remove();});
+  visible.forEach(w=>{
+    const existing=Array.from(layer.children).find(el=>el.dataset.widgetId===w.id);
+    const mediaId=w.type==='media'?(extractYouTubeId(w.mediaUrl)||''):null;
+    if(existing&&w.type==='media'&&existing.dataset.mediaId===mediaId){
+      existing.classList.toggle('collapsed',Boolean(w.collapsed));
+      existing.classList.toggle('has-media',Boolean(mediaId));
+      existing.style.left=w.x+'px';existing.style.top=w.y+'px';
+      existing.style.width=w.w+'px';existing.style.height=(w.collapsed?43:w.h)+'px';
+      existing.style.zIndex=w.z;
+      const heading=existing.querySelector('.widget-heading');
+      if(heading)heading.textContent=workspaceWidgetTitle(w);
+      const collapse=existing.querySelector('[data-widget-action="collapse"]');
+      if(collapse)collapse.textContent=w.collapsed?'＋':'−';
+      const input=existing.querySelector('[data-media-input]');
+      if(input&&document.activeElement!==input&&input.value!==w.mediaUrl)input.value=w.mediaUrl||'';
+      return;
+    }
+    const template=document.createElement('template');
+    template.innerHTML=workspaceWidgetMarkup(w).trim();
+    const el=template.content.firstElementChild;
+    if(!el)return;
+    if(w.type==='media'){
+      el.dataset.mediaId=mediaId||'';
+      el.classList.toggle('has-media',Boolean(mediaId));
+      const iframe=el.querySelector('.media-frame-wrap iframe');
+      if(iframe&&mediaId)iframe.src=workspaceMediaSrc(mediaId);
+    }
+    if(w.type==='exam'){
+      const content=el.querySelector('.workspace-widget-content');
+      if(content)content.outerHTML=examCountdownMarkup(w);
+    }
+    if(existing)existing.replaceWith(el);else layer.appendChild(el);
+  });
+  const hint=document.getElementById('workspaceEmptyHint');
+  if(hint)hint.classList.toggle('hidden',workspaceModel.widgets.some(w=>w.visible));
+  renderTuckedWidgets();
+  updateWorkspaceTimerUI();
+  bindWorkspaceWidgets();
+  updateWorkspaceClock();
+  updateExamCountdownWidgets();
+  if(workspaceModel.ui.whiteboard)initHomeCanvas();
+}
+function bindWorkspaceWidgets(){
+  const layer=document.getElementById('workspaceWidgetLayer');
+  if(!layer)return;
+  layer.querySelectorAll('.widget-drag-handle,.widget-resize-grip,.sticker-drag-area').forEach(handle=>{
+    if(handle.dataset.pointerBound)return;
+    handle.dataset.pointerBound='true';
+    handle.addEventListener('pointerdown',ev=>startWorkspacePointer(ev,handle.classList.contains('widget-resize-grip')?'resize':'move'));
+  });
+}
+function moveWorkspacePointer(ev){
+  if(!workspacePointer)return;
+  const w=workspaceModel.widgets.find(x=>x.id===workspacePointer.id),el=document.querySelector('[data-widget-id="'+workspacePointer.id+'"]');
+  if(!w||!el)return;
+  const dx=ev.clientX-workspacePointer.startX,dy=ev.clientY-workspacePointer.startY;
+  if(workspacePointer.mode==='move'){
+    w.x=Math.max(4,Math.min(innerWidth-w.w-4,workspacePointer.x+dx));
+    w.y=Math.max(4,Math.min(innerHeight-w.h-4,workspacePointer.y+dy));
+    el.style.left=w.x+'px';el.style.top=w.y+'px';
+  }else{
+    const minW=w.type==='sticker'?130:w.type==='timer'?260:w.type==='exam'?220:190,minH=w.type==='sticker'?105:w.type==='timer'?270:w.type==='note'?165:w.type==='media'?135:w.type==='exam'?190:120;
+    w.w=Math.max(minW,Math.min(innerWidth-w.x-8,workspacePointer.w+dx));
+    w.h=Math.max(minH,Math.min(innerHeight-w.y-8,workspacePointer.h+dy));
+    el.style.width=w.w+'px';el.style.height=w.h+'px';
+  }
+}
+function handleWorkspaceWidgetInput(ev){
+  const widget=ev.target.closest('[data-widget-id]');
+  if(!widget)return;
+  const w=workspaceModel.widgets.find(x=>x.id===widget.dataset.widgetId);
+  if(!w)return;
+  const field=ev.target.closest('[data-note-field]');
+  if(field){
+    w[field.dataset.noteField]=field.value;
+    if(field.dataset.noteField==='title'){
+      const heading=widget.querySelector('.widget-heading');
+      if(heading)heading.textContent=field.value||'Little note';
+    }
+  }else if(ev.target.matches('[data-exam-date]')){
+    w.examDate=ev.target.value;
+    saveWorkspace();
+    updateExamCountdownWidgets();
+    return;
+  }else if(ev.target.matches('[data-sticker-select]'))w.stickerText=ev.target.value;
+  else return;
+  saveWorkspace();
+  if(w.type==='sticker'){
+    const quote=widget.querySelector('.sticker-quote');
+    if(quote)quote.textContent=w.stickerText;
+  }
+}
+updateExamCountdownWidgets();
+setInterval(updateExamCountdownWidgets,1000);
+
 </script>
 <script>if("serviceWorker" in navigator&&location.protocol.startsWith('http')){navigator.serviceWorker.register('./sw-v31.js',{scope:'./'}).catch(err=>console.warn('Studyverse offline support is unavailable in this browser.',err));}</script>
 <!-- =========================================================
