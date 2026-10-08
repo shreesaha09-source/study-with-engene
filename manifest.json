@@ -1,7 +1,8 @@
 {
+  "id": "./",
   "name": "ENGENE Studyverse",
   "short_name": "Studyverse",
-  "description": "Plan, focus, and grow in your own ENGENE study space.",
+  "description": "Plan, focus, and grow in your ENGENE study space.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -9,9 +10,15 @@
   "theme_color": "#741f3a",
   "icons": [
     {
-      "src": "studyverse-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "wonchu-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "wonchu-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
