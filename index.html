@@ -84,7 +84,7 @@ body{margin:0;min-height:100%;font-family:Arial,sans-serif;color:var(--text);bac
 /* Soft ENGENE studyverse finish: preserve the original page structure and palette. */
 body{background-image:linear-gradient(135deg,rgba(39,13,27,.18),rgba(46,18,39,.26)),var(--user-bg,url('enhypen_bg_1000x700.png'))}
 .app{padding:clamp(14px,3vw,34px)}
-.hero{background:linear-gradient(115deg,color-mix(in srgb,var(--accent) 92%,#fff 8%),color-mix(in srgb,var(--accent-dark) 92%,#251323 8%));border:1px solid #ffffff55;box-shadow:0 18px 48px #16081240}
+.hero{background:linear-gradient(115deg,color-mix(in srgb,var(--accent) 89%,#fff 8%),color-mix(in srgb,var(--accent-dark) 92%,#251323 8%));border:1px solid #ffffff55;box-shadow:0 18px 48px #16081240}
 .card{background:rgba(255,249,251,.91);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.82);box-shadow:0 14px 40px rgba(39,13,27,.15)}
 button{border-radius:12px;box-shadow:0 5px 14px rgba(var(--accent-rgb),.14);transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
 button:hover{filter:brightness(1.04);transform:translateY(-2px);box-shadow:0 8px 20px rgba(var(--accent-rgb),.2)}
@@ -270,12 +270,26 @@ tbody tr:nth-child(even){background:#fff9fb}tbody tr:hover{background:color-mix(
 .home-study-canvas>summary::after{content:'＋';margin-left:auto;width:29px;height:29px;display:grid;place-items:center;border-radius:10px;background:var(--accent-faint);font-size:17px}
 .home-study-canvas[open]>summary::after{content:'−'}
 .home-study-canvas>summary small{display:block;margin-top:3px;color:var(--muted);font-size:11px;font-weight:500}
-.study-canvas-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:13px 0 9px}
+.study-canvas-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:13px 0 9px}
 .study-canvas-tools button{padding:7px 10px;border:1px solid #eadde9;background:#fff;color:#60475f;box-shadow:none;font-size:11px}
+.study-canvas-tools button:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
 .study-canvas-tools button.active{background:var(--accent);border-color:var(--accent);color:var(--button-text)}
-.study-canvas-tools input[type=color]{width:34px;height:31px;padding:3px;border-radius:9px}
+.study-canvas-tools input[type=color]{width:28px;height:28px;padding:2px;border:0;border-radius:50%;background:transparent;cursor:pointer}
 .study-canvas-tools input[type=range]{width:100px;padding:0;accent-color:var(--accent)}
-.study-canvas-size-label{color:var(--muted);font-size:10px;min-width:32px}
+.study-canvas-size-label{color:var(--muted);font-size:10px;min-width:32px;font-variant-numeric:tabular-nums}
+.canvas-tool-group,.canvas-color-group,.canvas-history-group{display:flex;align-items:center;gap:4px}
+.canvas-tool-group{padding:3px;border:1px solid #eadde9;border-radius:12px;background:#ffffff9c}
+.canvas-tool-group button{display:flex;align-items:center;gap:5px;padding:7px 9px;border:0;border-radius:9px;background:transparent;font-size:12px}
+.canvas-tool-group button span{font-size:10px;font-weight:700}
+.canvas-tool-group button.active{background:var(--accent);color:var(--button-text)}
+.canvas-color-group{padding:0 3px}
+.canvas-color-swatch{width:21px;height:21px;min-width:21px;padding:0!important;border:2px solid #fff!important;border-radius:50%!important;background:var(--swatch)!important;box-shadow:0 0 0 1px #76657944!important}
+.canvas-color-swatch[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent)!important}
+.canvas-custom-color{position:relative;display:grid;place-items:center;width:27px;height:27px;overflow:hidden;border:1px solid #eadde9;border-radius:50%;background:#fff;color:#60475f;cursor:pointer;font-size:17px;line-height:1}
+.canvas-custom-color input{position:absolute;inset:0;width:27px!important;height:27px!important;opacity:0;cursor:pointer}
+.canvas-size-control{display:flex;align-items:center;gap:5px;color:#806f7f;font-size:10px;font-weight:700}
+.canvas-history-group button{padding:6px 8px;font-size:17px;line-height:1}
+.canvas-action-button{font-weight:700!important}
 .study-canvas-board{display:block;width:100%;height:min(52vh,430px);min-height:230px;border:1px solid #e7dce8;border-radius:14px;background-color:#fffefa;background-image:radial-gradient(#c5b9c72b .7px,transparent .7px);background-size:18px 18px;box-shadow:inset 0 1px 4px #381d180a;touch-action:none;cursor:crosshair}
 .study-canvas-hint{margin:7px 2px 0;color:var(--muted);font-size:10px}
 .achievement-unlock-overlay{position:fixed;inset:0;z-index:140;display:grid;place-items:center;padding:18px;background:#1b1018b8;backdrop-filter:blur(8px)}
@@ -303,20 +317,22 @@ tbody tr:nth-child(even){background:#fff9fb}tbody tr:hover{background:color-mix(
 .workspace-root.whiteboard-on .workspace-whiteboard{opacity:1;pointer-events:auto}
 .workspace-whiteboard-live{position:absolute;inset:0;z-index:2;display:block;width:100%;height:100%;border:0;border-radius:0;background:transparent;opacity:0;pointer-events:none;touch-action:none}
 .workspace-root.whiteboard-on .workspace-whiteboard-live{opacity:1}
+.whiteboard-cursor{position:absolute;z-index:3;display:none;pointer-events:none;box-sizing:border-box;transform:translate(-50%,-50%);border:1.5px solid #742d4f;box-shadow:0 1px 5px #21172542}
+.whiteboard-cursor.visible{display:block}
 .workspace-root.whiteboard-on #workspaceEmptyHint{display:none}
 .workspace-root.whiteboard-on.grid-on .workspace-canvas:after{opacity:1;mask-image:none;background-image:linear-gradient(rgba(76,55,75,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(76,55,75,.18) 1px,transparent 1px)}
 .workspace-widget-layer{z-index:5}
-.whiteboard-toolbar{position:absolute;top:94px;right:18px;z-index:4;max-width:calc(100% - 28px);padding:5px;border:1px solid #ffffffb8;border-radius:15px;background:rgba(250,247,250,.9);box-shadow:0 8px 24px #22162628;backdrop-filter:blur(16px);pointer-events:auto}
-.whiteboard-toolbar .study-canvas-tools{margin:0;gap:5px;flex-wrap:wrap}
+.whiteboard-toolbar{position:absolute;top:94px;right:18px;z-index:6;max-width:calc(100% - 28px);padding:8px 10px;border:1px solid #ffffffc7;border-radius:16px;background:rgba(250,247,250,.9);box-shadow:0 8px 24px #22162628;backdrop-filter:blur(16px);pointer-events:auto}
+.whiteboard-toolbar .study-canvas-tools{margin:0;gap:7px;flex-wrap:wrap}
 .whiteboard-toolbar .study-canvas-tools button{padding:7px 9px;border-radius:9px;white-space:nowrap}
-.whiteboard-toolbar .study-canvas-tools input[type=range]{width:74px}
+.whiteboard-toolbar .study-canvas-tools input[type=range]{width:78px}
 .whiteboard-toolbar .whiteboard-exit{background:var(--accent);border-color:var(--accent);color:var(--button-text)}
 .whiteboard-toggle{min-width:38px;padding:8px 10px!important;font-size:17px!important}
 .whiteboard-toggle.active{background:var(--accent)!important;color:var(--button-text)!important;border-color:var(--accent)!important}
 .canvas-tool-button.active{background:var(--accent)!important;color:var(--button-text)!important;border-color:var(--accent)!important}
 @media(max-width:1050px){.dashboard{grid-template-columns:minmax(0,1fr);grid-template-areas:"intro" "stats" "companion" "notes"}.dashboard .statgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-notes-card{min-height:120px}}
 @media(max-width:700px){.dashboard{gap:12px}.dashboard .home-companion{grid-template-columns:100px minmax(0,1fr);padding:12px}.dashboard .home-companion-image{width:96px;height:100px}.dashboard-notes-card{min-height:100px;padding:15px}.whiteboard-toolbar{top:102px;left:10px;right:10px;max-width:none}.whiteboard-toolbar .study-canvas-tools{justify-content:center}.whiteboard-toolbar .study-canvas-tools input[type=range]{width:62px}}
-@media(max-width:420px){.dashboard .home-companion{grid-template-columns:1fr;text-align:center}.dashboard .home-companion-image{width:116px;height:116px}.dashboard-notes-card{grid-template-columns:44px minmax(0,1fr) auto;padding:12px;gap:9px}.dashboard-notes-icon{width:42px;height:42px}.dashboard-notes-copy b{font-size:18px}.dashboard .statgrid{grid-template-columns:1fr}.whiteboard-toolbar .study-canvas-tools{gap:3px}.whiteboard-toolbar .study-canvas-tools button{padding:6px 7px;font-size:10px}}
+@media(max-width:420px){.dashboard .home-companion{grid-template-columns:1fr;text-align:center}.dashboard .home-companion-image{width:116px;height:116px}.dashboard-notes-card{grid-template-columns:44px minmax(0,1fr) auto;padding:12px;gap:9px}.dashboard-notes-icon{width:42px;height:42px}.dashboard-notes-copy b{font-size:18px}.dashboard .statgrid{grid-template-columns:1fr}.whiteboard-toolbar .study-canvas-tools{gap:3px}.whiteboard-toolbar .study-canvas-tools button{padding:6px 7px;font-size:10px}.canvas-tool-group button span{display:none}.canvas-tool-group{gap:2px}.canvas-color-group{gap:3px}.canvas-color-swatch{width:18px;height:18px;min-width:18px}.canvas-size-control{gap:3px}}
 .workspace-widget{min-width:190px;min-height:120px}
 .workspace-widget.focus-widget{min-width:260px;min-height:270px}
 .workspace-widget.note-widget{min-height:165px}
@@ -397,17 +413,32 @@ tbody tr:nth-child(even){background:#fff9fb}tbody tr:hover{background:color-mix(
       <div class="workspace-wash"></div>
       <canvas id="studyCanvas" class="study-canvas-board workspace-whiteboard" aria-label="Draw on the quiet desk background"></canvas>
       <canvas id="studyCanvasLive" class="workspace-whiteboard-live" aria-hidden="true"></canvas>
+      <div id="studyCanvasCursor" class="whiteboard-cursor" aria-hidden="true"></div>
       <div id="workspaceWhiteboardToolbar" class="whiteboard-toolbar hidden" role="toolbar" aria-label="Whiteboard tools">
         <div class="study-canvas-tools">
-          <button class="active" data-home-canvas-tool="pencil" onclick="setHomeCanvasTool('pencil',this)" title="Pencil">✏️</button>
-          <button data-home-canvas-tool="highlighter" onclick="setHomeCanvasTool('highlighter',this)" title="Highlighter">🖍️</button>
-          <button data-home-canvas-tool="eraser" onclick="setHomeCanvasTool('eraser',this)" title="Eraser">⌫</button>
-          <input id="studyCanvasColor" type="color" value="#742d4f" aria-label="Pencil color">
-          <input id="studyCanvasSize" type="range" min="2" max="24" value="5" aria-label="Stroke size" oninput="updateHomeCanvasSizeLabel()">
+          <div class="canvas-tool-group" role="group" aria-label="Drawing tool">
+            <button class="active" data-home-canvas-tool="pen" aria-pressed="true" onclick="setHomeCanvasTool('pen',this)" title="Pen (P)">🖊<span>Pen</span></button>
+            <button data-home-canvas-tool="highlighter" aria-pressed="false" onclick="setHomeCanvasTool('highlighter',this)" title="Highlighter (H)">▰<span>Highlighter</span></button>
+            <button data-home-canvas-tool="eraser" aria-pressed="false" onclick="setHomeCanvasTool('eraser',this)" title="Eraser (E)">▱<span>Eraser</span></button>
+          </div>
+          <div class="canvas-color-group" role="group" aria-label="Ink color">
+            <button class="canvas-color-swatch" style="--swatch:#742d4f" data-home-canvas-color="#742d4f" aria-label="Berry ink" aria-pressed="true" onclick="setHomeCanvasColor('#742d4f',this)"></button>
+            <button class="canvas-color-swatch" style="--swatch:#28252c" data-home-canvas-color="#28252c" aria-label="Black ink" aria-pressed="false" onclick="setHomeCanvasColor('#28252c',this)"></button>
+            <button class="canvas-color-swatch" style="--swatch:#547da5" data-home-canvas-color="#547da5" aria-label="Blue ink" aria-pressed="false" onclick="setHomeCanvasColor('#547da5',this)"></button>
+            <button class="canvas-color-swatch" style="--swatch:#588b72" data-home-canvas-color="#588b72" aria-label="Sage ink" aria-pressed="false" onclick="setHomeCanvasColor('#588b72',this)"></button>
+            <button class="canvas-color-swatch" style="--swatch:#9974bf" data-home-canvas-color="#9974bf" aria-label="Lavender ink" aria-pressed="false" onclick="setHomeCanvasColor('#9974bf',this)"></button>
+            <button class="canvas-color-swatch" style="--swatch:#e889a9" data-home-canvas-color="#e889a9" aria-label="Rose ink" aria-pressed="false" onclick="setHomeCanvasColor('#e889a9',this)"></button>
+            <button class="canvas-color-swatch" style="--swatch:#f2c54c" data-home-canvas-color="#f2c54c" aria-label="Sunshine ink" aria-pressed="false" onclick="setHomeCanvasColor('#f2c54c',this)"></button>
+            <label class="canvas-custom-color" title="Choose a custom ink color"><span>＋</span><input id="studyCanvasColor" type="color" value="#742d4f" aria-label="Choose custom ink color" oninput="setHomeCanvasColor(this.value)"></label>
+          </div>
+          <label class="canvas-size-control"><span>Size</span><input id="studyCanvasSize" type="range" min="1" max="40" value="5" aria-label="Brush size" oninput="updateHomeCanvasSizeLabel()"></label>
           <span id="studyCanvasSizeLabel" class="study-canvas-size-label">5 px</span>
-          <button onclick="undoHomeCanvasStroke()" title="Undo last stroke">↶</button>
-          <button onclick="clearHomeCanvas()" title="Clear whiteboard">Clear</button>
-          <button onclick="downloadHomeCanvas()" title="Save as PNG">↓ PNG</button>
+          <div class="canvas-history-group" role="group" aria-label="Drawing history">
+            <button id="studyCanvasUndo" onclick="undoHomeCanvasStroke()" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↶</button>
+            <button id="studyCanvasRedo" onclick="redoHomeCanvasStroke()" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled>↷</button>
+          </div>
+          <button class="canvas-action-button" onclick="clearHomeCanvas()" title="Clear whiteboard (can be undone)">Clear</button>
+          <button class="canvas-action-button" onclick="downloadHomeCanvas()" title="Save drawing as PNG">↓ PNG</button>
           <button class="whiteboard-exit" onclick="toggleWorkspaceWhiteboard(false)" title="Exit whiteboard mode">Done</button>
         </div>
       </div>
@@ -457,7 +488,7 @@ function cleanText(value,max){return String(value??'').trim().slice(0,max);}
 function normalizeTasks(list){if(!Array.isArray(list))return [];const seen=new Set(),out=[];for(const raw of list){const no=Number(raw?.no),name=cleanText(raw?.name,160),subject=cleanText(raw?.subject,80),priority=['High','Medium','Low'].includes(raw?.priority)?raw.priority:'Medium',status=raw?.status==='Completed'?'Completed':'Pending',deadline=cleanText(raw?.deadline,20)||'No Deadline',duration=Number(raw?.duration);if(!Number.isInteger(no)||no<1||!name||!subject||seen.has(no))continue;seen.add(no);out.push({no,name,subject,priority,status,deadline,duration:Number.isFinite(duration)&&duration>0?Math.min(duration,1440):recommended(priority),created:raw?.created||new Date().toISOString(),completedAt:status==='Completed'&&raw?.completedAt?raw.completedAt:null});}return out.sort((a,b)=>a.no-b.no);}
 const members=['Jungwon','Heeseung','Jay','Jake','Sunghoon','Sunoo','Ni-ki','ENHYPEN (Group)'];
 const memberImages={'Jungwon':'member-jungwon.png','Heeseung':'member-heeseung.png','Jay':'member-jay.png','Jake':'member-jake.png','Sunghoon':'member-sunghoon.png','Sunoo':'member-sunoo.png','Ni-ki':'member-niki.png','ENHYPEN (Group)':'member-group.png'};
-const memberDisplayNames={'Jungwon':'WONCHU','Heeseung':'NoxStar','Jay':'Jay','Jake':'JAKEY','Sunghoon':'SnoWe','Sunoo':'KISHU','Ni-ki':'PU-NI','ENHYPEN (Group)':'ENHYPEN'};
+const memberDisplayNames={'Jungwon':'WONCHU','Heeseung':'Hamseung','Jay':'NoxStar','Jake':'JAKEY','Sunghoon':'SnoWe','Sunoo':'KISHU','Ni-ki':'PU-NI','ENHYPEN (Group)':'ENHYPEN'};
 function memberDisplay(member){return memberDisplayNames[member]||member;}
 const subjectSuggestions=['Physics','Chemistry','Mathematics','Computer Science','English','Biology','History','Geography','Economics','Accountancy','Business Studies','Psychology','Sociology','Political Science','Hindi','Marathi','French','Computer Applications','Environmental Science'];
 const quotes={Jungwon:'Keep going one step at a time. 🖤',Heeseung:'A little progress still counts.',Jay:'Finish what you started.',Jake:'You are doing better than you think.',Sunghoon:'Focus on the next task, not the whole mountain.',Sunoo:'Be kind to yourself while you work.', 'Ni-ki':'Keep moving forward.'};
@@ -521,7 +552,7 @@ async function setBackground(e){const f=e.target.files?.[0];e.target.value='';if
 async function resetBackground(){try{await removeBackgroundBlob();}catch(e){}if(backgroundURL){URL.revokeObjectURL(backgroundURL);backgroundURL='';}settings.background='';saveSettings();await updateStorageMeter();toast('Default background restored.');}
 async function initBackground(){try{let blob=await getBackgroundBlob();if(!blob&&settings.background){try{blob=dataURLToBlob(settings.background);blob=await optimizeBackground(blob);await putBackgroundBlob(blob);settings.background='';safeLocalSet(SET_KEY,JSON.stringify(settings));}catch(e){console.warn('Legacy background migration failed',e);}}if(blob){if(backgroundURL)URL.revokeObjectURL(backgroundURL);backgroundURL=URL.createObjectURL(blob);applySettings();}}catch(e){console.warn('Background storage unavailable',e);applySettings();}}
 const HOME_STUDY_CANVAS_KEY='esc_home_study_canvas_v1';
-let homeCanvasStrokes=normalizeHomeCanvasStrokes(loadJSON(HOME_STUDY_CANVAS_KEY,[])),homeCanvasTool='pencil',activeHomeCanvasStroke=null,studyverseBooted=false,ot7UnlockAudioUrl='';
+let homeCanvasStrokes=normalizeHomeCanvasStrokes(loadJSON(HOME_STUDY_CANVAS_KEY,[])),homeCanvasTool='pen',activeHomeCanvasStroke=null,studyverseBooted=false,ot7UnlockAudioUrl='';
 function normalizeHomeCanvasStrokes(items){if(!Array.isArray(items))return[];return items.slice(-160).filter(s=>s&&typeof s==='object'&&Array.isArray(s.points)).map(s=>({tool:['pencil','highlighter','eraser'].includes(s.tool)?s.tool:'pencil',color:/^#[0-9a-f]{6}$/i.test(s.color||'')?s.color:'#742d4f',size:Math.max(1,Math.min(32,Number(s.size)||5)),points:s.points.slice(-700).map(p=>({x:Math.max(0,Math.min(1,Number(p.x)||0)),y:Math.max(0,Math.min(1,Number(p.y)||0))})).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y))})).filter(s=>s.points.length);}
 function homeCanvasContext(canvas){return canvas?.getContext('2d');}
 function resizeHomeCanvas(){const canvas=document.getElementById('studyCanvas');if(!canvas)return;const rect=canvas.getBoundingClientRect();if(rect.width<2||rect.height<2)return;const ratio=Math.max(1,Math.min(3,window.devicePixelRatio||1)),width=Math.round(rect.width*ratio),height=Math.round(rect.height*ratio);[canvas,document.getElementById('studyCanvasLive')].forEach(layer=>{if(layer&&(layer.width!==width||layer.height!==height)){layer.width=width;layer.height=height;}});redrawHomeCanvas();if(activeHomeCanvasStroke?.tool==='highlighter')redrawHomeCanvasLive();else clearHomeCanvasLive();}
@@ -932,6 +963,217 @@ function handleWorkspaceWidgetInput(ev){
 }
 updateExamCountdownWidgets();
 setInterval(updateExamCountdownWidgets,1000);
+
+/* Whiteboard engine upgrade: keep the existing storage key and normalize the
+   original pencil/highlighter/eraser records into this action-based renderer. */
+function normalizeHomeCanvasStrokes(items){
+  if(!Array.isArray(items))return[];
+  return items.slice(-160).map(item=>{
+    if(!item||typeof item!=='object')return null;
+    const tool=item.tool==='clear'?'clear':['pen','pencil','highlighter','eraser'].includes(item.tool)?item.tool:'pencil';
+    if(tool==='clear')return{tool:'clear',color:'#742d4f',size:1,points:[]};
+    if(!Array.isArray(item.points))return null;
+    const points=item.points.slice(-1600).map(point=>{
+      const x=Number(point?.x),y=Number(point?.y);
+      if(!Number.isFinite(x)||!Number.isFinite(y))return null;
+      const pressure=Number(point.pressure);
+      return{x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y)),pressure:Number.isFinite(pressure)?Math.max(.08,Math.min(1,pressure)):.5};
+    }).filter(Boolean);
+    if(!points.length)return null;
+    return{tool,color:/^#[0-9a-f]{6}$/i.test(item.color||'')?item.color:'#742d4f',size:Math.max(1,Math.min(48,Number(item.size)||5)),points};
+  }).filter(Boolean);
+}
+function homeCanvasContext(canvas){return canvas?.getContext('2d',{alpha:true});}
+function homeCanvasPixelRatio(){return Math.max(1,Math.min(3,window.devicePixelRatio||1));}
+function resizeHomeCanvas(){
+  const canvas=document.getElementById('studyCanvas');
+  if(!canvas)return;
+  const rect=canvas.getBoundingClientRect();
+  if(rect.width<2||rect.height<2)return;
+  const ratio=homeCanvasPixelRatio(),width=Math.round(rect.width*ratio),height=Math.round(rect.height*ratio);
+  [canvas,document.getElementById('studyCanvasLive')].forEach(layer=>{
+    if(layer&&(layer.width!==width||layer.height!==height)){layer.width=width;layer.height=height;}
+  });
+  redrawHomeCanvas();clearHomeCanvasLive();
+  if(activeHomeCanvasStroke)redrawHomeCanvasLive();
+}
+function homeCanvasLineWidth(stroke,pressure=.5){
+  if(stroke.tool==='highlighter')return Math.max(7,Math.min(60,stroke.size*2.65));
+  if(stroke.tool==='eraser')return Math.max(12,stroke.size*2.2);
+  const pressureScale=stroke.tool==='pen'?.62+Math.max(.08,Math.min(1,pressure))*.76:1;
+  return Math.max(1,stroke.size*(stroke.tool==='pencil'?.78:1)*pressureScale);
+}
+function traceHomeCanvasStroke(ctx,points,smooth=true){
+  if(!points.length)return;
+  ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
+  if(points.length===1){ctx.lineTo(points[0].x+.01,points[0].y);return;}
+  if(!smooth||points.length===2){for(let i=1;i<points.length;i++)ctx.lineTo(points[i].x,points[i].y);return;}
+  for(let i=1;i<points.length-1;i++){
+    const midX=(points[i].x+points[i+1].x)/2,midY=(points[i].y+points[i+1].y)/2;
+    ctx.quadraticCurveTo(points[i].x,points[i].y,midX,midY);
+  }
+  const last=points[points.length-1];ctx.lineTo(last.x,last.y);
+}
+function paintHomeCanvasStroke(ctx,stroke,rect){
+  if(stroke.tool==='clear'){ctx.clearRect(0,0,rect.width,rect.height);return;}
+  if(!stroke.points?.length)return;
+  const points=stroke.points.map(point=>({x:point.x*rect.width,y:point.y*rect.height,pressure:point.pressure??.5}));
+  const averagePressure=points.reduce((sum,point)=>sum+point.pressure,0)/points.length;
+  ctx.save();ctx.globalCompositeOperation=stroke.tool==='eraser'?'destination-out':'source-over';
+  ctx.globalAlpha=stroke.tool==='highlighter'?.3:stroke.tool==='pencil'?.64:1;
+  ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=homeCanvasLineWidth(stroke,averagePressure);
+  ctx.strokeStyle=stroke.tool==='eraser'?'rgba(0,0,0,1)':stroke.color;ctx.fillStyle=stroke.color;
+  traceHomeCanvasStroke(ctx,points,true);ctx.stroke();ctx.restore();
+}
+function redrawHomeCanvas(){
+  const canvas=document.getElementById('studyCanvas'),ctx=homeCanvasContext(canvas);
+  if(!canvas||!ctx)return;
+  const rect=canvas.getBoundingClientRect();if(rect.width<2||rect.height<2)return;
+  const ratio=homeCanvasPixelRatio();ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,rect.width,rect.height);
+  homeCanvasStrokes.forEach(stroke=>paintHomeCanvasStroke(ctx,stroke,rect));
+  ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';updateHomeCanvasHistoryButtons();
+}
+function clearHomeCanvasLive(){
+  const canvas=document.getElementById('studyCanvasLive'),ctx=homeCanvasContext(canvas);
+  if(!canvas||!ctx)return;const rect=canvas.getBoundingClientRect();if(rect.width<2||rect.height<2)return;
+  const ratio=homeCanvasPixelRatio();ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,rect.width,rect.height);
+}
+function redrawHomeCanvasLive(){
+  const canvas=document.getElementById('studyCanvasLive'),ctx=homeCanvasContext(canvas),base=document.getElementById('studyCanvas');
+  if(!canvas||!ctx||!base)return;const rect=base.getBoundingClientRect();if(rect.width<2||rect.height<2)return;
+  const ratio=homeCanvasPixelRatio();ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,rect.width,rect.height);
+  if(activeHomeCanvasStroke)paintHomeCanvasStroke(ctx,activeHomeCanvasStroke,rect);
+}
+function persistHomeCanvas(){
+  homeCanvasStrokes=homeCanvasStrokes.slice(-160);
+  safeLocalSet(HOME_STUDY_CANVAS_KEY,JSON.stringify(homeCanvasStrokes));updateHomeCanvasHistoryButtons();
+}
+function initHomeCanvas(){
+  const canvas=document.getElementById('studyCanvas');if(!canvas)return;
+  if(!canvas.dataset.bound){
+    canvas.dataset.bound='1';canvas.addEventListener('pointerdown',startHomeCanvasStroke);
+    canvas.addEventListener('pointermove',continueHomeCanvasStroke);canvas.addEventListener('pointerup',finishHomeCanvasStroke);
+    canvas.addEventListener('pointercancel',finishHomeCanvasStroke);canvas.addEventListener('lostpointercapture',finishHomeCanvasStroke);
+    canvas.addEventListener('pointerenter',updateHomeCanvasCursor);canvas.addEventListener('pointermove',updateHomeCanvasCursor);
+    canvas.addEventListener('pointerleave',hideHomeCanvasCursor);
+  }
+  if(window.ResizeObserver&&!window.__homeCanvasResizeObserver){
+    window.__homeCanvasResizeObserver=new ResizeObserver(resizeHomeCanvas);
+    window.__homeCanvasResizeObserver.observe(canvas.parentElement||canvas);
+  }
+  resizeHomeCanvas();updateHomeCanvasHistoryButtons();
+}
+function homeCanvasPoint(event){
+  const canvas=document.getElementById('studyCanvas'),rect=canvas.getBoundingClientRect();
+  return{x:Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),y:Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height)),pressure:Number.isFinite(event.pressure)&&event.pressure>0?Math.max(.08,Math.min(1,event.pressure)):.5};
+}
+function homeCanvasAddPoint(stroke,event){
+  const point=homeCanvasPoint(event),points=stroke.points,last=points[points.length-1],rect=document.getElementById('studyCanvas').getBoundingClientRect();
+  if(last&&Math.hypot((point.x-last.x)*rect.width,(point.y-last.y)*rect.height)<.35)return false;
+  points.push(point);
+  if(points.length>1600){const reduced=points.filter((_,index)=>index===0||index===points.length-1||index%2===0);stroke.points=reduced;}
+  return true;
+}
+function startHomeCanvasStroke(event){
+  if(event.button!==undefined&&event.button!==0)return;
+  const canvas=event.currentTarget,color=document.getElementById('studyCanvasColor')?.value||'#742d4f',size=Number(document.getElementById('studyCanvasSize')?.value)||5;
+  activeHomeCanvasStroke={tool:homeCanvasTool,color,size,points:[homeCanvasPoint(event)]};
+  window.__homeCanvasPointerId=event.pointerId;
+  try{canvas.setPointerCapture(event.pointerId);}catch(error){}
+  updateHomeCanvasCursor(event);scheduleHomeCanvasPreview();event.preventDefault();
+}
+function scheduleHomeCanvasPreview(){
+  if(window.__homeCanvasPreviewFrame)return;
+  window.__homeCanvasPreviewFrame=requestAnimationFrame(()=>{window.__homeCanvasPreviewFrame=0;redrawHomeCanvasLive();});
+}
+function continueHomeCanvasStroke(event){
+  updateHomeCanvasCursor(event);
+  if(!activeHomeCanvasStroke||event.pointerId!==window.__homeCanvasPointerId)return;
+  let samples=[];
+  try{samples=event.getCoalescedEvents?.()||[];}catch(error){}
+  if(!samples.length)samples=[event];else if(samples[samples.length-1]!==event)samples.push(event);
+  let changed=false;
+  for(const sample of samples)changed=homeCanvasAddPoint(activeHomeCanvasStroke,sample)||changed;
+  if(changed)scheduleHomeCanvasPreview();event.preventDefault();
+}
+function finishHomeCanvasStroke(event){
+  if(!activeHomeCanvasStroke)return;
+  if(event?.pointerId!==undefined&&window.__homeCanvasPointerId!==undefined&&event.pointerId!==window.__homeCanvasPointerId)return;
+  if(event&&Number.isFinite(event.clientX)&&Number.isFinite(event.clientY))homeCanvasAddPoint(activeHomeCanvasStroke,event);
+  if(window.__homeCanvasPreviewFrame){cancelAnimationFrame(window.__homeCanvasPreviewFrame);window.__homeCanvasPreviewFrame=0;}
+  const completed=activeHomeCanvasStroke;activeHomeCanvasStroke=null;window.__homeCanvasPointerId=undefined;
+  homeCanvasStrokes.push(completed);window.__homeCanvasRedoStack=[];persistHomeCanvas();redrawHomeCanvas();clearHomeCanvasLive();
+  try{event?.currentTarget?.releasePointerCapture?.(event.pointerId);}catch(error){}
+}
+function updateHomeCanvasCursor(event){
+  const cursor=document.getElementById('studyCanvasCursor'),canvas=document.getElementById('studyCanvas');
+  if(!cursor||!canvas||!document.getElementById('workspaceRoot')?.classList.contains('whiteboard-on'))return;
+  const rect=canvas.getBoundingClientRect(),size=Number(document.getElementById('studyCanvasSize')?.value)||5;
+  const diameter=homeCanvasLineWidth({tool:homeCanvasTool,size},.5),width=homeCanvasTool==='highlighter'?diameter:homeCanvasTool==='eraser'?diameter:Math.max(9,diameter);
+  cursor.style.left=(event.clientX-rect.left)+'px';cursor.style.top=(event.clientY-rect.top)+'px';
+  cursor.style.width=width+'px';cursor.style.height=(homeCanvasTool==='highlighter'?Math.max(5,width*.45):width)+'px';
+  cursor.style.borderRadius=homeCanvasTool==='highlighter'?'3px':'50%';
+  cursor.style.borderColor=homeCanvasTool==='eraser'?'#ffffff':(document.getElementById('studyCanvasColor')?.value||'#742d4f');
+  cursor.style.background=homeCanvasTool==='eraser'?'#ffffff38':'transparent';cursor.classList.add('visible');
+}
+function hideHomeCanvasCursor(){document.getElementById('studyCanvasCursor')?.classList.remove('visible');}
+function updateHomeCanvasHistoryButtons(){
+  const undo=document.getElementById('studyCanvasUndo'),redo=document.getElementById('studyCanvasRedo');
+  if(undo)undo.disabled=!homeCanvasStrokes.length;
+  if(redo)redo.disabled=!(window.__homeCanvasRedoStack?.length);
+}
+function setHomeCanvasTool(tool,button){
+  if(!['pen','highlighter','eraser'].includes(tool))return;
+  homeCanvasTool=tool;
+  document.querySelectorAll('[data-home-canvas-tool]').forEach(item=>{const active=item.dataset.homeCanvasTool===tool;item.classList.toggle('active',active);item.setAttribute('aria-pressed',String(active));});
+  const canvas=document.getElementById('studyCanvas');if(canvas)canvas.style.cursor='none';
+  const colorLabel=document.getElementById('studyCanvasColor')?.closest('label');if(colorLabel)colorLabel.setAttribute('aria-label',tool==='highlighter'?'Highlighter color':tool+' color');
+  if(button?.focus)button.focus({preventScroll:true});
+}
+function setHomeCanvasColor(color,button){
+  if(!/^#[0-9a-f]{6}$/i.test(color||''))return;
+  const input=document.getElementById('studyCanvasColor');if(input)input.value=color;
+  document.querySelectorAll('[data-home-canvas-color]').forEach(item=>item.setAttribute('aria-pressed',String(item.dataset.homeCanvasColor.toLowerCase()===color.toLowerCase())));
+  if(button?.focus)button.focus({preventScroll:true});
+}
+function updateHomeCanvasSizeLabel(){
+  const input=document.getElementById('studyCanvasSize'),label=document.getElementById('studyCanvasSizeLabel');
+  if(input&&label)label.textContent=input.value+' px';
+}
+function undoHomeCanvasStroke(){
+  if(activeHomeCanvasStroke){activeHomeCanvasStroke=null;clearHomeCanvasLive();}
+  if(!homeCanvasStrokes.length)return;
+  window.__homeCanvasRedoStack=window.__homeCanvasRedoStack||[];
+  window.__homeCanvasRedoStack.push(homeCanvasStrokes.pop());persistHomeCanvas();redrawHomeCanvas();
+}
+function redoHomeCanvasStroke(){
+  const stack=window.__homeCanvasRedoStack||[];if(!stack.length)return;
+  homeCanvasStrokes.push(stack.pop());persistHomeCanvas();redrawHomeCanvas();
+}
+function clearHomeCanvas(){
+  if(!homeCanvasStrokes.length||homeCanvasStrokes[homeCanvasStrokes.length-1]?.tool==='clear')return;
+  if(!confirm('Clear your study canvas? You can undo this.'))return;
+  homeCanvasStrokes.push({tool:'clear',color:'#742d4f',size:1,points:[]});window.__homeCanvasRedoStack=[];
+  persistHomeCanvas();redrawHomeCanvas();clearHomeCanvasLive();
+}
+function downloadHomeCanvas(){
+  const canvas=document.getElementById('studyCanvas');if(!canvas)return;
+  const out=document.createElement('canvas');out.width=canvas.width;out.height=canvas.height;
+  const ctx=out.getContext('2d');if(!ctx)return;
+  ctx.fillStyle='#fffefa';ctx.fillRect(0,0,out.width,out.height);ctx.drawImage(canvas,0,0);
+  out.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='engene-study-canvas.png';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/png');
+}
+window.addEventListener('resize',resizeHomeCanvas);
+document.addEventListener('keydown',event=>{
+  if(!document.getElementById('workspaceRoot')?.classList.contains('whiteboard-on'))return;
+  if(event.target?.closest?.('input,textarea,select,[contenteditable="true"]'))return;
+  const key=event.key.toLowerCase();
+  if((event.ctrlKey||event.metaKey)&&key==='z'){event.preventDefault();event.shiftKey?redoHomeCanvasStroke():undoHomeCanvasStroke();return;}
+  if((event.ctrlKey||event.metaKey)&&key==='y'){event.preventDefault();redoHomeCanvasStroke();return;}
+  if(event.ctrlKey||event.metaKey||event.altKey)return;
+  const tools={p:'pen',h:'highlighter',e:'eraser'};
+  if(tools[key]){event.preventDefault();setHomeCanvasTool(tools[key],document.querySelector('[data-home-canvas-tool="'+tools[key]+'"]'));}
+});
 
 </script>
 <script>if("serviceWorker" in navigator&&location.protocol.startsWith('http')){navigator.serviceWorker.register('./sw-v31.js',{scope:'./'}).catch(err=>console.warn('Studyverse offline support is unavailable in this browser.',err));}</script>
