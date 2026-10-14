@@ -1,0 +1,3 @@
+[functions.study-ai]
+# The handler validates the user's Supabase JWT with auth.getUser() itself.
+verify_jwt = false

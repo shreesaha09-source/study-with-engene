@@ -1,0 +1,170 @@
+ENGENEverse Study AI — FILES AND EXACT SETUP STEPS
+=================================================
+
+WHAT YOU HAVE NOW
+-----------------
+The project folder already contains the updated app page and all Study AI files listed below. If you are working in this exact folder, do not create duplicate files; edit the configuration file, then deploy the Supabase files. A ZIP copy is included as STUDY_AI_PACKAGE.zip.
+
+FILES TO UPDATE IN YOUR EXISTING APP
+------------------------------------
+1. index.html
+   This is the existing main app page. It now contains the Study AI menu button and view, and loads the new Study AI CSS, browser client, and public configuration file. Keep using this file as your app's index.html.
+
+2. index.html.txt
+   A plain-text mirror of index.html for reading or copying. The browser does not load this file. If you edit index.html later and want this copy to stay current, copy the full index.html text into index.html.txt.
+
+NEW FILES THAT MUST SIT BESIDE index.html
+-----------------------------------------
+3. study-ai.js
+   The browser-side interface and request code for the Tutor, Planner, Quiz, and Help Me Start modes.
+
+4. study-ai.css
+   Responsive styling for the Study AI view.
+
+5. study-ai-config.js
+   Public Supabase project URL and anon/publishable key. This file must not contain an OpenAI/provider secret.
+
+SUPABASE FILES THAT MUST KEEP THESE FOLDER PATHS
+-----------------------------------------------
+6. supabase/config.toml
+   Function configuration. The handler validates the user's JWT itself.
+
+7. supabase/functions/study-ai/index.ts
+   Secure server-side function. It checks the signed-in user, validates request data, checks the per-user quota, and calls the AI provider. The provider key is read from Supabase server secrets.
+
+8. supabase/migrations/20261014120000_study_ai_rate_limit.sql
+   Creates the private per-user usage table and the quota-check function used by the Edge Function.
+
+9. STUDY_AI_SETUP.md
+   Shorter setup notes. This checklist gives the longer, step-by-step version.
+
+The existing index.html also references legacy supabase-config.js and studyverse-cloud.js files, but neither file was present in the inspected project folder. The new Study AI uses study-ai-config.js and does not depend on those missing legacy files. Do not copy a provider secret into a legacy config file.
+
+IMPORTANT SECURITY RULE
+-----------------------
+Never put OPENAI_API_KEY (or any AI provider secret) in index.html, study-ai-config.js, local storage, or any file served to visitors. Only the Supabase Edge Function receives that secret, through Supabase project secrets.
+
+STEP 1 — BACK UP THE APP
+------------------------
+Before copying this feature to another folder or computer, make a copy of your current app folder. Keep your existing manifest, images, settings, task data, companion media, and other app files.
+
+If this is already the folder where you run ENGENEverse, the updated index.html and support files are already present. Do not overwrite your app folder with only the ZIP contents; the ZIP is an update bundle, not a replacement for all of your images and app assets.
+
+STEP 2 — ADD OR UPDATE THE FRONTEND FILES
+-----------------------------------------
+In the folder containing your app's index.html, make sure these three files exist beside it:
+
+  study-ai.js
+  study-ai.css
+  study-ai-config.js
+
+Use the versions in this project or in STUDY_AI_PACKAGE.zip. Replace the existing index.html with the updated index.html from this project if you are updating a separate copy of the app. The optional index.html.txt file is for reading/copying only and does not replace index.html.
+
+STEP 3 — CREATE/FILL THE SUPABASE PUBLIC SETTINGS
+-------------------------------------------------
+Open study-ai-config.js in a text editor. Replace the two empty values with your own Supabase project URL and public anon/publishable key:
+
+  supabaseUrl: 'https://YOUR-PROJECT-REF.supabase.co',
+  supabaseAnonKey: 'YOUR_PUBLIC_ANON_OR_PUBLISHABLE_KEY',
+
+Keep functionName as 'study-ai'. The anon/publishable key is intended for browser use. Do not paste an OpenAI key here.
+
+Find these values in your Supabase project settings/API page. Confirm the URL and key belong to the same project as the Edge Function you will deploy.
+
+STEP 4 — ENABLE GUEST AUTHENTICATION
+------------------------------------
+The inspected app folder did not include an existing Supabase authentication setup for this feature. The Study AI view therefore has an explicit “Continue as a guest” button. Supabase anonymous sign-in must be enabled for the same project:
+
+  Supabase Dashboard → Authentication → Sign In / Providers → Anonymous sign-ins
+
+Enabling this creates Supabase guest auth users when a student presses that button. It does not send prompts before the student submits a request. If you do not want guest access, connect the app to your existing signed-in Supabase session instead; that requires adapting study-ai.js to use your current auth client/session.
+
+STEP 5 — INSTALL AND LINK THE SUPABASE CLI
+------------------------------------------
+Open PowerShell in the project folder (the folder that contains index.html and supabase/). Install the Supabase CLI if needed, then sign in and link the project:
+
+  supabase login
+  supabase link --project-ref YOUR_PROJECT_REF
+
+Replace YOUR_PROJECT_REF with the reference shown in your Supabase project URL/dashboard. Do not include the https:// prefix.
+
+STEP 6 — APPLY THE DATABASE MIGRATION
+------------------------------------
+From the same project folder, run:
+
+  supabase db push
+
+This applies supabase/migrations/20261014120000_study_ai_rate_limit.sql. The function uses this RPC to cap each signed-in user at 12 requests per minute. The usage table has row-level security enabled and no direct client table access.
+
+STEP 7 — ADD SERVER SECRETS
+---------------------------
+Create an API key with your AI provider and choose a model available to your account that supports the OpenAI Responses API and Structured Outputs. Set secrets on the Supabase project from PowerShell:
+
+  supabase secrets set OPENAI_API_KEY=YOUR_PROVIDER_SECRET
+  supabase secrets set OPENAI_MODEL=YOUR_SUPPORTED_MODEL_NAME
+  supabase secrets set STUDY_AI_ALLOWED_ORIGINS=https://your-real-site.example
+
+For a second production hostname, separate origins with commas, for example:
+
+  supabase secrets set STUDY_AI_ALLOWED_ORIGINS=https://your-real-site.example,https://www.your-real-site.example
+
+For local testing, include your local HTTP address and port, e.g.:
+
+  supabase secrets set STUDY_AI_ALLOWED_ORIGINS=http://localhost:5500,https://your-real-site.example
+
+Use the exact page origin (scheme, hostname, and port). A file:///... page does not have a normal HTTP origin and will not work for this backend. Do not commit the provider key or share it in chat.
+
+STEP 8 — DEPLOY THE EDGE FUNCTION
+---------------------------------
+From the project folder, run:
+
+  supabase functions deploy study-ai
+
+Wait for deployment to finish without errors. The function's verify_jwt setting is false because its handler explicitly checks the bearer token with Supabase Auth before doing work.
+
+STEP 9 — SERVE AND TRY THE APP
+------------------------------
+Serve the app using your normal website host or a local HTTP server at an origin included in STUDY_AI_ALLOWED_ORIGINS. For example, if Python is installed, from the project folder:
+
+  python -m http.server 5500
+
+Then open http://localhost:5500 in a browser. Do not open the local file directly with a file:/// URL for this test.
+
+In the app:
+  1. Open Main Menu → My Study AI.
+  2. Choose “Continue as a guest.”
+  3. Ask the Tutor a short question and send it.
+  4. Confirm the badge says “Service responded” only after a real reply.
+  5. Try a plan with pending tasks and a plan with no tasks.
+  6. Try one quiz question, answer it, and continue.
+  7. Try Help Me Start, then start either the suggested sprint or the smaller 5-minute sprint.
+  8. Check that no task is added unless you press an explicit add-task button and confirm.
+
+EXPECTED FAILURE MESSAGES
+-------------------------
+- “Needs setup”: the public Supabase URL/key is blank or the Supabase client script could not load.
+- “Guest session needed”: press Continue as a guest; if it fails, enable anonymous sign-ins and recheck the project URL/key.
+- Origin is not allowed / connection failure: add the exact website origin to STUDY_AI_ALLOWED_ORIGINS and redeploy/retry.
+- Rate limit: wait one minute and retry.
+- Provider secret/model not configured: set OPENAI_API_KEY and OPENAI_MODEL using Supabase secrets.
+- Quota migration not configured: run supabase db push for this project.
+
+WHAT THE FEATURE SENDS
+----------------------
+- Tutor: subject/level/style/syllabus selections and up to 12 recent chat messages when Send is pressed.
+- Planner: up to 30 pending task names, subjects, priorities, deadlines and estimated durations, plus the planning choices. Completed tasks are filtered out in the browser and rejected if sent to the backend.
+- Quiz: the selected subject/topic/notes, the current question and answer for grading.
+- Help Me Start: the goal and energy choice.
+
+The page does not save Study AI conversations. The OpenAI Responses request sets store=false. Review your provider and Supabase project retention settings for any other applicable logs or account-level retention. Avoid entering sensitive personal information.
+
+WHAT WAS TESTED HERE
+--------------------
+- The new browser JavaScript and all 7 inline scripts in index.html passed Node syntax checks.
+- A local UI smoke check confirmed all four mode panels render, the missing-configuration message appears, and completed tasks are excluded from the planner task count.
+- The index.html.txt mirror was checked against index.html.
+- A live provider request, Supabase migration/deployment, timer in a real browser, and mobile/desktop visual review still need to be run after your project is configured. No API credentials or deployed Supabase project were present in the workspace.
+
+ROLLBACK
+--------
+Restore the backed-up index.html if needed, then remove study-ai.js, study-ai.css, and study-ai-config.js only if no other page uses them. Supabase objects can be removed separately after reviewing your project; do not drop the quota table/function blindly if you have deployed or reused them elsewhere.
