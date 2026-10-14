@@ -195,7 +195,9 @@
   function errorText(error) {
     if (error?.code === 'NO_CONFIG') return 'Study AI is not configured yet. Set up study-ai-config.js, deploy the Edge Function, and add the server secrets.';
     if (error?.code === 'NO_SESSION') return 'Start a guest session first. This creates a Supabase guest account for rate-limited access.';
-    if (error?.status === 429) return 'Study AI is at its request limit for now. Wait a little and try again.';
+    // The Edge Function uses HTTP 429 both for our per-user limit and when
+    // the AI provider is busy. Keep its message so students get the right fix.
+    if (error?.status === 429) return safe(error?.message, 280) || 'Study AI is busy right now. Wait a minute, then try again.';
     if (error?.status === 401 || error?.status === 403) return 'Your session could not be verified. Start a new guest session, then try again.';
     if (error?.name === 'AbortError') return 'That request took too long. Check your connection and try again.';
     if (/Failed to fetch|NetworkError|fetch/i.test(error?.message || '')) return 'Could not reach the Study AI service. Check the connection and confirm the Edge Function is deployed.';
