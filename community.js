@@ -1,10 +1,40 @@
 (() => {
   'use strict';
-  const state = { client: null, session: null, creator: false, tab: 'gallery', loading: false };
+  const state = { client: null, session: null, creator: false, tab: 'gallery', loading: false, pulseStop: null, pulseInterval: null, updatePulseInitialized: false };
   const cfg = () => window.ENGENE_STUDY_AI_CONFIG || {};
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
   const el = (id) => document.getElementById(id);
   const status = (message, error = false) => { const node = el('communityStatus'); if (node) { node.textContent = message; node.dataset.error = String(error); } };
+  const updateDismissKey = () => `engene-community-update-dot-dismissed:${state.session?.user?.id || 'guest'}`;
+  function stopUpdatePulse() {
+    clearTimeout(state.pulseStop); clearInterval(state.pulseInterval);
+    state.pulseStop = state.pulseInterval = null;
+    el('communityUpdatesTab')?.classList.remove('is-pulsing');
+  }
+  function syncUpdateDot(hasUnread) {
+    const button = el('communityUpdatesTab');
+    if (!button) return;
+    const dismissed = sessionStorage.getItem(updateDismissKey()) === 'true';
+    button.classList.toggle('has-new-update', hasUnread && !dismissed);
+    button.setAttribute('aria-label', hasUnread ? 'Updates, new update available' : 'Updates');
+    button.title = hasUnread ? 'New update available' : 'Updates from the creator';
+    if (!hasUnread || dismissed) { stopUpdatePulse(); if (!hasUnread) state.updatePulseInitialized = false; return; }
+    if (state.updatePulseInitialized) return;
+    state.updatePulseInitialized = true;
+    button.classList.add('is-pulsing', 'is-initial-pulse');
+    state.pulseStop = setTimeout(() => {
+      button.classList.remove('is-pulsing', 'is-initial-pulse');
+      state.pulseInterval = setInterval(() => {
+        button.classList.add('is-pulsing');
+        state.pulseStop = setTimeout(() => button.classList.remove('is-pulsing'), 1900);
+      }, 12000);
+    }, 4000);
+  }
+  function dismissUpdateDot() {
+    sessionStorage.setItem(updateDismissKey(), 'true');
+    el('communityUpdatesTab')?.classList.remove('has-new-update');
+    stopUpdatePulse();
+  }
   const client = () => {
     if (state.client) return state.client;
     if (window.ENGENE_SUPABASE_CLIENT) { state.client = window.ENGENE_SUPABASE_CLIENT; return state.client; }
@@ -45,11 +75,11 @@
       <div class="topbar"><div><div class="community-kicker">MAKE SOMETHING, SHARE SOMETHING ✦</div><h2>🎨 The Community Board</h2></div><button type="button" onclick="showView('home')">← Main Menu</button></div>
       <div class="community-tabs" role="tablist" aria-label="Community sections">
         <button type="button" role="tab" aria-selected="true" data-community-tab="gallery">🎨 Fan Art</button>
-        <button type="button" role="tab" aria-selected="false" data-community-tab="updates">📣 Updates <span id="communityTabBadge" class="community-badge hidden">New</span></button>
+        <button type="button" role="tab" aria-selected="false" id="communityUpdatesTab" class="community-update-button" data-community-tab="updates" aria-label="Updates"><span>📣 Updates</span><span class="community-update-dot" aria-hidden="true"></span></button>
       </div>
       <div id="communityGallery" class="community-panel">
         <div class="community-intro"><div><h3>Made by the community, for the community</h3><p>Share a fan art piece, cheer others on, and help keep the board kind.</p></div></div>
-        <form id="communityUploadForm" class="community-upload"><label>Artwork title<input id="communityTitle" maxlength="90" required placeholder="Give your art a name"></label><label>Short caption <span>(optional)</span><textarea id="communityCaption" maxlength="500" rows="2" placeholder="Tell us a little about it"></textarea></label><label class="community-file-label">Choose a PNG or JPEG image<input id="communityFile" type="file" accept="image/png,image/jpeg" required></label><button type="submit">Share artwork ✨</button><p class="community-small">Your image stays private until the creator approves it. No extra 5 MB cap is added by this page; Supabase still sets the maximum upload size for your project.</p></form>
+        <form id="communityUploadForm" class="community-upload"><label>Artwork title<input id="communityTitle" maxlength="90" required placeholder="Give your art a name"></label><label><span class="community-label-title">Short caption <span>(optional)</span></span><textarea id="communityCaption" maxlength="500" rows="2" placeholder="Tell us a little about it"></textarea></label><label class="community-file-label">Choose a PNG or JPEG image<input id="communityFile" type="file" accept="image/png,image/jpeg" required></label><button type="submit">Share artwork ✨</button><p class="community-small">Sign in to submit. Your image stays private until the creator reviews and approves it. Only approved art appears here; Supabase’s project size limit applies.</p></form>
         <div id="communityMine" class="community-mine"></div><div id="communityGalleryGrid" class="community-grid" aria-live="polite"></div>
       </div>
       <div id="communityUpdates" class="community-panel hidden"><div class="community-intro"><div><h3>Updates from the creator</h3><p>One place to see announcements and important news.</p></div></div><div id="communityCreatorPost" class="community-creator hidden"></div><div id="communityAnnouncements" class="community-announcements"></div></div>
@@ -65,7 +95,7 @@
     document.querySelectorAll('[data-community-tab]').forEach((button) => button.setAttribute('aria-selected', String(button.dataset.communityTab === state.tab)));
     el('communityGallery')?.classList.toggle('hidden', state.tab !== 'gallery');
     el('communityUpdates')?.classList.toggle('hidden', state.tab !== 'updates');
-    if (state.tab === 'updates') loadAnnouncements(true).catch((e) => status(e.message, true));
+    if (state.tab === 'updates') { dismissUpdateDot(); loadAnnouncements(true).catch((e) => status(e.message, true)); }
   }
   async function init() {
     install();
@@ -104,13 +134,13 @@
     const readSet = new Set((reads || []).map((row) => row.announcement_id));
     const unread = (announcements || []).filter((row) => !readSet.has(row.id));
     const badge = el('communityUnreadBadge');
-    const tabBadge = el('communityTabBadge');
-    [badge, tabBadge].forEach((node) => { if (node) { node.classList.toggle('hidden', !unread.length); node.textContent = unread.length ? `${unread.length} new` : ''; } });
+    syncUpdateDot(unread.length > 0);
+    if (badge) { badge.classList.toggle('hidden', !unread.length); badge.textContent = unread.length ? `${unread.length} new` : ''; }
     if (markRead && unread.length) {
       const { error: insertError } = await db.from('community_announcement_reads').upsert(unread.map((row) => ({ announcement_id: row.id, user_id: state.session.user.id })), { onConflict: 'announcement_id,user_id', ignoreDuplicates: true });
       if (insertError) throw insertError;
       unread.forEach((row) => readSet.add(row.id));
-      [badge, tabBadge].forEach((node) => node?.classList.add('hidden'));
+      badge?.classList.add('hidden');
     }
     const list = el('communityAnnouncements');
     if (list) list.innerHTML = announcements?.length ? announcements.map((row) => `<article class="community-announcement"><time>${new Date(row.published_at).toLocaleString()}</time><h4>${escapeHtml(row.title)}</h4><p>${escapeHtml(row.body).replace(/\n/g, '<br>')}</p>${!readSet.has(row.id) ? '<span class="community-new-tag">NEW</span>' : ''}</article>`).join('') : '<div class="community-empty">No updates yet. Check back here for creator announcements.</div>';
@@ -124,7 +154,7 @@
     form.innerHTML = `<h3>Post an update</h3><form id="communityAnnouncementForm"><label>Title<input id="communityAnnouncementTitle" maxlength="120" required></label><label>Message<textarea id="communityAnnouncementBody" rows="4" maxlength="3000" required></textarea></label><button>Publish to everyone</button></form><div id="communityReviewQueue"></div>`;
     el('communityAnnouncementForm').addEventListener('submit', publishAnnouncement);
     const { review = [], reports = [] } = result;
-    el('communityReviewQueue').innerHTML = `<h3>Artwork review</h3>${review.length ? review.map((row) => `<article class="community-review-card"><img src="${escapeHtml(row.image_url)}" alt="Artwork for review"><div><b>${escapeHtml(row.title)}</b><p>${escapeHtml(row.caption || '')}</p><small>Status: ${escapeHtml(row.moderation_status)} · Reports: ${reports.filter((report) => report.art_id === row.id).length}</small><div><button type="button" onclick="communityModerate('${row.id}','approved')">Approve</button> <button type="button" class="secondary" onclick="communityModerate('${row.id}','rejected')">Remove</button></div></div></article>`).join('') : '<p class="community-small">No artwork is waiting for review.</p>'}`;
+    el('communityReviewQueue').innerHTML = `<h3>Artwork review</h3>${review.length ? review.map((row) => `<article class="community-review-card"><div class="community-review-preview"><img class="is-safety-blurred" src="${escapeHtml(row.image_url)}" alt="Artwork preview hidden until you reveal it"><button type="button" class="community-reveal-button" onclick="communityRevealPreview(this)">Reveal preview</button></div><div><b>${escapeHtml(row.title)}</b><p>${escapeHtml(row.caption || '')}</p><small>Private for creator review · Status: ${escapeHtml(row.moderation_status)} · Reports: ${reports.filter((report) => report.art_id === row.id).length}</small><div><button type="button" onclick="communityModerate('${row.id}','approved')">Approve</button> <button type="button" class="secondary" onclick="communityModerate('${row.id}','rejected')">Remove</button></div></div></article>`).join('') : '<p class="community-small">No artwork is waiting for review.</p>'}`;
   }
   async function uploadArtwork(event) {
     event.preventDefault();
@@ -151,6 +181,14 @@
     } catch (error) { status(error.message, true); }
     finally { button.disabled = false; }
   }
+  function revealPreview(button) {
+    const image = button?.parentElement?.querySelector('img');
+    if (!image) return;
+    const reveal = image.classList.toggle('is-safety-blurred') === false;
+    image.alt = reveal ? 'Artwork preview' : 'Artwork preview hidden until you reveal it';
+    button.textContent = reveal ? 'Hide preview' : 'Reveal preview';
+    button.setAttribute('aria-pressed', String(reveal));
+  }
   async function vote(id, alreadyVoted) {
     try {
       const db = client(); await currentSession();
@@ -166,7 +204,7 @@
     if (!reason) return;
     const normalized = reason.trim().toLowerCase();
     if (!['inappropriate', 'copyright', 'spam', 'other'].includes(normalized)) { status('Please enter inappropriate, copyright, spam, or other.', true); return; }
-    try { await currentSession(); const { error } = await client().from('community_art_reports').insert({ art_id: id, user_id: state.session.user.id, reason: normalized }); if (error) throw error; status('Thanks. Your report was sent to the site owner.'); }
+    try { await currentSession(); const result = await callFunction('report-art', { id, reason: normalized }); status(result.message || 'Thanks. The artwork was sent for review.'); await loadGallery(); }
     catch (error) { status(error.message.includes('community_art_reports') ? 'The database setup is not finished yet.' : error.message, true); }
   }
   async function publishAnnouncement(event) {
@@ -181,6 +219,7 @@
   window.communityVote = vote;
   window.communityReport = report;
   window.communityModerate = moderate;
+  window.communityRevealPreview = revealPreview;
   window.showCommunity = () => { if (window.showView) window.showView('community'); init().catch((e) => status(e.message, true)); };
   document.addEventListener('DOMContentLoaded', () => {
     install();
