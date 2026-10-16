@@ -26,7 +26,7 @@
       button.classList.remove('is-pulsing', 'is-initial-pulse');
       state.pulseInterval = setInterval(() => {
         button.classList.add('is-pulsing');
-        state.pulseStop = setTimeout(() => button.classList.remove('is-pulsing'), 1900);
+        state.pulseStop = setTimeout(() => button.classList.remove('is-pulsing'), 2000);
       }, 12000);
     }, 4000);
   }
@@ -66,8 +66,8 @@
   }
   function install() {
     if (el('community')) return;
-    if (!document.querySelector('link[href$="community.css"]')) {
-      const stylesheet = document.createElement('link'); stylesheet.rel = 'stylesheet'; stylesheet.href = 'community.css'; document.head.appendChild(stylesheet);
+    if (!document.querySelector('link[rel="stylesheet"][href*="community.css"]')) {
+      const stylesheet = document.createElement('link'); stylesheet.rel = 'stylesheet'; stylesheet.href = 'community.css?v=20261017-ui-safety'; document.head.appendChild(stylesheet);
     }
     const section = document.createElement('section');
     section.id = 'community'; section.className = 'view card community-view hidden';
@@ -78,8 +78,8 @@
         <button type="button" role="tab" aria-selected="false" id="communityUpdatesTab" class="community-update-button" data-community-tab="updates" aria-label="Updates"><span>📣 Updates</span><span class="community-update-dot" aria-hidden="true"></span></button>
       </div>
       <div id="communityGallery" class="community-panel">
-        <div class="community-intro"><div><h3>Made by the community, for the community</h3><p>Share a fan art piece, cheer others on, and help keep the board kind.</p></div></div>
-        <form id="communityUploadForm" class="community-upload"><label>Artwork title<input id="communityTitle" maxlength="90" required placeholder="Give your art a name"></label><label><span class="community-label-title">Short caption <span>(optional)</span></span><textarea id="communityCaption" maxlength="500" rows="2" placeholder="Tell us a little about it"></textarea></label><label>Artist name or nickname<input id="communityArtistName" maxlength="40" required placeholder="How should we credit you?"></label><label class="community-file-label">Choose a PNG or JPEG image<input id="communityFile" type="file" accept="image/png,image/jpeg" required></label><button type="submit">Share artwork ✨</button><label class="community-terms-consent"><input id="communityTermsAccepted" type="checkbox" required><span>I made this or have permission to share it. I keep ownership and allow ENGENEverse to display and share it with credit. <a href="COMMUNITY_ART_TERMS.md" target="_blank" rel="noopener">Read the terms</a>.</span></label><p class="community-small">OpenAI screens your image and caption for safety. Your image stays private until creator approval; only approved art appears here. Supabase’s project size limit applies.</p></form>
+        <div class="community-intro"><div><h3>Made by the community, for the community</h3><p>Share fan art and cheer others on. Approved artwork stays blurred until you choose to reveal it.</p></div></div>
+        <form id="communityUploadForm" class="community-upload"><label>Artwork title<input id="communityTitle" maxlength="90" required placeholder="Give your art a name"></label><label><span class="community-label-title">Short caption <span>(optional)</span></span><textarea id="communityCaption" maxlength="500" rows="2" placeholder="Tell us a little about it"></textarea></label><label>Artist name or nickname<input id="communityArtistName" maxlength="40" required placeholder="How should we credit you?"></label><label class="community-file-label">Choose a PNG or JPEG image<input id="communityFile" type="file" accept="image/png,image/jpeg" required></label><button type="submit">Share artwork ✨</button><label class="community-terms-consent"><input id="communityTermsAccepted" type="checkbox" required><span>I made this or have permission to share it. I keep ownership and allow ENGENEverse to display and share it with credit. <a href="COMMUNITY_ART_TERMS.md" target="_blank" rel="noopener">Read the terms</a>.</span></label><p class="community-small">An automatic safety screen checks each image and caption, then the creator reviews it. If screening fails or flags content, it is not published. Approved art is blurred until you reveal it.</p></form>
         <div id="communityMine" class="community-mine"></div><div id="communityGalleryGrid" class="community-grid" aria-live="polite"></div>
       </div>
       <div id="communityUpdates" class="community-panel hidden"><div class="community-intro"><div><h3>Updates from the creator</h3><p>One place to see announcements and important news.</p></div></div><div id="communityCreatorPost" class="community-creator hidden"></div><div id="communityAnnouncements" class="community-announcements"></div></div>
@@ -117,7 +117,7 @@
     if (!grid) return;
     grid.innerHTML = data?.length ? data.map((row) => {
       const { data: url } = db.storage.from('community-art-approved').getPublicUrl(row.public_path);
-      return `<article class="community-art-card"><img loading="lazy" src="${escapeHtml(url.publicUrl)}" alt="${escapeHtml(row.title)}"><div class="community-art-copy"><h4>${escapeHtml(row.title)}</h4><small class="community-artist">by ${escapeHtml(row.creator_name || 'Community artist')}</small><p>${escapeHtml(row.caption || '')}</p><div class="community-card-actions"><button type="button" class="community-vote ${voted.has(row.id) ? 'is-voted' : ''}" onclick="communityVote('${row.id}',${voted.has(row.id)})" aria-pressed="${voted.has(row.id)}">${voted.has(row.id) ? '💖' : '🤍'} ${Number(row.vote_count) || 0}</button><button type="button" class="community-share" onclick="communityShare('${row.id}')" aria-label="Share ${escapeHtml(row.title)}">Share ↗</button><button type="button" class="community-report" onclick="communityReport('${row.id}')">Report</button></div></div></article>`;
+      return `<article class="community-art-card"><div class="community-art-image-wrap"><img loading="lazy" class="is-safety-blurred" src="${escapeHtml(url.publicUrl)}" alt="Approved artwork hidden until you reveal it"><button type="button" class="community-art-reveal" aria-pressed="false" onclick="communityRevealArtwork(this)">Reveal approved artwork</button></div><div class="community-art-copy"><h4>${escapeHtml(row.title)}</h4><small class="community-artist">by ${escapeHtml(row.creator_name || 'Community artist')}</small><p>${escapeHtml(row.caption || '')}</p><div class="community-card-actions"><button type="button" class="community-vote ${voted.has(row.id) ? 'is-voted' : ''}" onclick="communityVote('${row.id}',${voted.has(row.id)})" aria-pressed="${voted.has(row.id)}">${voted.has(row.id) ? '💖' : '🤍'} ${Number(row.vote_count) || 0}</button><button type="button" class="community-share" onclick="communityShare('${row.id}')" aria-label="Share ${escapeHtml(row.title)}">Share ↗</button><button type="button" class="community-report" onclick="communityReport('${row.id}')">Report</button></div></div></article>`;
     }).join('') : '<div class="community-empty">The board is ready for its first piece. Share something you made ✨</div>';
     const mine = (data || []).filter((row) => row.user_id === state.session.user.id);
     const { data: ownSubmissions, error: ownError } = await db.from('community_art').select('id,title,moderation_status,created_at').eq('user_id', state.session.user.id).neq('moderation_status', 'approved').order('created_at', { ascending: false }).limit(10);
@@ -190,6 +190,14 @@
     button.textContent = reveal ? 'Hide preview' : 'Reveal preview';
     button.setAttribute('aria-pressed', String(reveal));
   }
+  function revealArtwork(button) {
+    const image = button?.parentElement?.querySelector('img');
+    if (!image) return;
+    const revealed = image.classList.toggle('is-safety-blurred') === false;
+    image.alt = revealed ? 'Approved community artwork' : 'Approved artwork hidden until you reveal it';
+    button.textContent = revealed ? 'Hide image' : 'Reveal approved artwork';
+    button.setAttribute('aria-pressed', String(revealed));
+  }
   async function vote(id, alreadyVoted) {
     try {
       const db = client(); await currentSession();
@@ -236,6 +244,7 @@
   window.communityReport = report;
   window.communityModerate = moderate;
   window.communityRevealPreview = revealPreview;
+  window.communityRevealArtwork = revealArtwork;
   window.showCommunity = () => { if (window.showView) window.showView('community'); init().catch((e) => status(e.message, true)); };
   document.addEventListener('DOMContentLoaded', () => {
     install();

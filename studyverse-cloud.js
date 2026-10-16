@@ -2309,3 +2309,266 @@
   }
 
 })();
+
+/* Syncs this user's existing ENGENEverse browser data to their Supabase account. */
+(() => {
+  'use strict';
+  const TABLE = 'user_app_data';
+  const BUCKET = 'engene-user-backgrounds';
+  const META_PREFIX = 'engene_cloud_sync_meta_v1:';
+  const EXCLUDED_KEYS = new Set(['esc_timer_session_v1']);
+  const state = { client: null, userId: null, busy: false, applying: false, timer: null, ready: false };
+  const statusNode = () => document.getElementById('cloudSyncStatus');
+  const showStatus = (text, bad = false) => {
+    const node = statusNode();
+    if (node) { node.textContent = text; node.dataset.error = String(bad); }
+  };
+  const client = () => window.ENGENE_SUPABASE_CLIENT || null;
+  const metaKey = () => META_PREFIX + state.userId;
+  const readMeta = () => { try { return JSON.parse(localStorage.getItem(metaKey()) || 'null'); } catch (_) { return null; } };
+  const writeMeta = (meta) => { try { localStorage.setItem(metaKey(), JSON.stringify(meta)); } catch (_) {} };
+  const getLocalData = () => {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith('esc_') || key.endsWith('_corrupt_backup') || EXCLUDED_KEYS.has(key)) continue;
+      data[key] = localStorage.getItem(key);
+    }
+    return Object.fromEntries(Object.entries(data).sort(([a], [b]) => a.localeCompare(b)));
+  };
+  const stableString = (value) => JSON.stringify(value, Object.keys(value || {}).sort());
+  async function hash(value) {
+    const input = typeof value === 'string' ? value : JSON.stringify(value);
+    if (window.crypto?.subtle && window.TextEncoder) {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+      return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+    }
+    let h = 2166136261;
+    for (let i = 0; i < input.length; i++) { h ^= input.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return String(h >>> 0);
+  }
+  const parse = (value) => { try { return JSON.parse(value); } catch (_) { return value; } };
+  const isObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
+  function mergeValues(remote, local, key) {
+    if (local === undefined) return remote;
+    if (remote === undefined) return local;
+    if (Array.isArray(remote) && Array.isArray(local)) {
+      if (key === 'esc_tasks_v2') {
+        const merged = new Map();
+        [...remote, ...local].forEach((item) => {
+          const identity = item?.created ? `${item.created}|${item.name}|${item.subject}` : `${item?.name}|${item?.subject}|${item?.deadline}`;
+          const previous = merged.get(identity);
+          merged.set(identity, previous ? { ...previous, ...item } : item);
+        });
+        const items = [...merged.values()].sort((a, b) => {
+          const aOrder = Number(a?.order), bOrder = Number(b?.order);
+          const aHasOrder = Number.isFinite(aOrder) && aOrder >= 0;
+          const bHasOrder = Number.isFinite(bOrder) && bOrder >= 0;
+          if (aHasOrder && bHasOrder && aOrder !== bOrder) return aOrder - bOrder;
+          if (aHasOrder !== bHasOrder) return aHasOrder ? -1 : 1;
+          return Number(a?.no || 0) - Number(b?.no || 0) || String(a?.created || '').localeCompare(String(b?.created || ''));
+        });
+        const used = new Set();
+        items.forEach((item, index) => {
+          item.order = index;
+          let no = Number(item.no) || index + 1;
+          if (used.has(no)) no = Math.max(0, ...used) + 1;
+          used.add(no); item.no = no;
+        });
+        return items;
+      }
+      const merged = new Map();
+      [...remote, ...local].forEach((item, index) => {
+        const id = item && typeof item === 'object' ? (item.id || item.no || JSON.stringify(item)) : String(item);
+        const old = merged.get(String(id));
+        merged.set(String(id), old && isObject(old) && isObject(item) ? { ...old, ...item } : item);
+      });
+      return [...merged.values()];
+    }
+    if (isObject(remote) && isObject(local)) {
+      const result = { ...remote };
+      Object.keys(local).forEach((field) => { result[field] = mergeValues(remote[field], local[field], field); });
+      return result;
+    }
+    return local;
+  }
+  function mergeSnapshots(remote, local) {
+    const result = { ...remote };
+    Object.keys(local).forEach((key) => {
+      const remoteValue = Object.prototype.hasOwnProperty.call(remote, key) ? parse(remote[key]) : undefined;
+      const localValue = parse(local[key]);
+      result[key] = JSON.stringify(mergeValues(remoteValue, localValue, key));
+    });
+    return Object.fromEntries(Object.entries(result).sort(([a], [b]) => a.localeCompare(b)));
+  }
+  function replaceLocalData(data) {
+    state.applying = true;
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('esc_') && !key.endsWith('_corrupt_backup') && !EXCLUDED_KEYS.has(key)) localStorage.removeItem(key);
+      }
+      Object.entries(data || {}).forEach(([key, value]) => {
+        if (key.startsWith('esc_') && typeof value === 'string') localStorage.setItem(key, value);
+      });
+    } finally { state.applying = false; }
+  }
+  async function saveRemote(data, backgroundPath) {
+    const { data: row, error } = await state.client.from(TABLE).upsert({
+      user_id: state.userId, data, background_path: backgroundPath || null, updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' }).select('updated_at,background_path').single();
+    if (error) throw error;
+    return row;
+  }
+  async function uploadBackground(blob, existingPath) {
+    if (!blob) return existingPath || null;
+    const path = `${state.userId}/background`;
+    const { error } = await state.client.storage.from(BUCKET).upload(path, blob, {
+      upsert: true, contentType: blob.type || 'image/webp', cacheControl: '3600',
+    });
+    if (error) throw error;
+    return path;
+  }
+  async function downloadBackground(path) {
+    if (!path) return null;
+    const { data, error } = await state.client.storage.from(BUCKET).download(path);
+    if (error) throw error;
+    return data;
+  }
+  async function applyBackground(blob) {
+    state.applying = true;
+    try {
+      if (blob) await window.putBackgroundBlob(blob);
+      else await window.removeBackgroundBlob();
+      if (typeof window.initBackground === 'function') await window.initBackground();
+    } finally { state.applying = false; }
+  }
+  async function syncNow() {
+    if (state.busy || !state.client || !state.userId || !navigator.onLine) return;
+    state.busy = true;
+    showStatus('Saving your app to your account…');
+    try {
+      const { data: remote, error } = await state.client.from(TABLE).select('data,background_path,updated_at').eq('user_id', state.userId).maybeSingle();
+      if (error) throw error;
+      const local = getLocalData();
+      const localHash = await hash(local);
+      const meta = readMeta();
+      let dataToSave = local;
+      let backgroundPath = remote?.background_path || null;
+      let shouldSave = false;
+      let shouldReload = false;
+      let localBackground = null;
+      try { localBackground = await window.getBackgroundBlob(); } catch (_) {}
+
+      if (!remote) {
+        dataToSave = local;
+        backgroundPath = await uploadBackground(localBackground, null);
+        shouldSave = true;
+      } else if (!meta) {
+        dataToSave = mergeSnapshots(remote.data || {}, local);
+        backgroundPath = localBackground ? await uploadBackground(localBackground, remote.background_path) : remote.background_path;
+        shouldSave = true;
+        shouldReload = JSON.stringify(dataToSave) !== JSON.stringify(local);
+        if (!localBackground && remote.background_path) {
+          const blob = await downloadBackground(remote.background_path);
+          await applyBackground(blob);
+        }
+      } else if (localHash !== meta.localHash && remote.updated_at === meta.cloudUpdatedAt) {
+        // Only this browser changed since its last successful sync. Replacing the snapshot
+        // here also syncs deletions instead of bringing deleted items back.
+        dataToSave = local;
+        if (localBackground) backgroundPath = await uploadBackground(localBackground, remote.background_path);
+        else if (meta.hadBackground) {
+          const { error: removeError } = await state.client.storage.from(BUCKET).remove([`${state.userId}/background`]);
+          if (removeError) throw removeError;
+          backgroundPath = null;
+        }
+        shouldSave = true;
+      } else if (localHash !== meta.localHash && remote.updated_at !== meta.cloudUpdatedAt) {
+        dataToSave = mergeSnapshots(remote.data || {}, local);
+        backgroundPath = localBackground ? await uploadBackground(localBackground, remote.background_path) : remote.background_path;
+        shouldSave = true;
+        shouldReload = JSON.stringify(dataToSave) !== JSON.stringify(local);
+      } else if (remote.updated_at !== meta.cloudUpdatedAt) {
+        dataToSave = remote.data || {};
+        shouldReload = JSON.stringify(dataToSave) !== JSON.stringify(local);
+        if (remote.background_path) {
+          const blob = await downloadBackground(remote.background_path);
+          await applyBackground(blob);
+        } else if (meta.hadBackground) {
+          await applyBackground(null);
+        }
+      } else {
+        showStatus('Everything is saved to your account.');
+        state.ready = true;
+        return;
+      }
+
+      let saved = remote;
+      if (shouldSave) saved = await saveRemote(dataToSave, backgroundPath);
+      if (shouldReload) replaceLocalData(dataToSave);
+      const finalHash = await hash(dataToSave);
+      writeMeta({ cloudUpdatedAt: saved?.updated_at || remote?.updated_at || null, localHash: finalHash, hadBackground: Boolean(backgroundPath) });
+      state.ready = true;
+      if (shouldReload) {
+        showStatus('Your saved data was loaded. Refreshing the app…');
+        setTimeout(() => location.reload(), 250);
+      } else showStatus('Everything is saved to your account.');
+    } catch (error) {
+      console.error('ENGENEverse cloud save failed:', error);
+      const message = error?.message || 'Could not save to your account.';
+      if (/user_app_data|relation|does not exist/i.test(message)) showStatus('Cloud saving needs its Supabase setup step. Open the setup guide.', true);
+      else if (/row-level security|permission|policy/i.test(message)) showStatus('Supabase blocked this save. Check the cloud setup guide and your sign-in.', true);
+      else showStatus('Cloud save could not connect. Your data is still saved in this browser.', true);
+    } finally { state.busy = false; }
+  }
+  function scheduleSync() {
+    if (state.applying || !state.userId) return;
+    clearTimeout(state.timer);
+    state.timer = setTimeout(() => syncNow(), 1300);
+  }
+  function installListeners() {
+    const originalSet = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      const result = originalSet.call(this, key, value);
+      if (this === localStorage && String(key).startsWith('esc_')) scheduleSync();
+      return result;
+    };
+    const originalRemove = Storage.prototype.removeItem;
+    Storage.prototype.removeItem = function (key) {
+      const result = originalRemove.call(this, key);
+      if (this === localStorage && String(key).startsWith('esc_')) scheduleSync();
+      return result;
+    };
+    window.addEventListener('engene-background-changed', scheduleSync);
+    window.addEventListener('online', scheduleSync);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) syncNow(); });
+    setInterval(() => { if (state.userId) syncNow(); }, 45000);
+  }
+  async function initialize() {
+    installListeners();
+    state.client = client();
+    if (!state.client) { showStatus('Cloud saving is not configured on this copy of the app.', true); return; }
+    const connect = async () => {
+      const { data, error } = await state.client.auth.getSession();
+      if (error) throw error;
+      const session = data.session;
+      if (!session?.user?.id) {
+        state.userId = null;
+        showStatus('Sign in to your website to save your app to your account.');
+        return;
+      }
+      if (state.userId !== session.user.id) state.userId = session.user.id;
+      await syncNow();
+    };
+    try { await connect(); }
+    catch (error) { console.error('Could not read the signed-in Supabase account:', error); showStatus('Could not check your sign-in. Your data remains saved in this browser.', true); }
+    state.client.auth.onAuthStateChange((_event, session) => {
+      const nextId = session?.user?.id || null;
+      if (nextId !== state.userId) { state.userId = nextId; state.ready = false; }
+      if (nextId) setTimeout(() => syncNow(), 0);
+      else showStatus('Sign in to your website to save your app to your account.');
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize, { once: true });
+  else initialize();
+})();
