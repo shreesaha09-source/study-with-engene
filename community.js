@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const state = { client: null, session: null, creator: false, tab: 'gallery', loading: false, pulseStop: null, pulseInterval: null, updatePulseInitialized: false };
+  const state = { client: null, session: null, creator: false, tab: 'gallery', loading: false, pulseStop: null, pulseInterval: null, updatePulseInitialized: false, galleryRows: [] };
   const cfg = () => window.ENGENE_STUDY_AI_CONFIG || {};
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
   const el = (id) => document.getElementById(id);
@@ -79,7 +79,7 @@
       </div>
       <div id="communityGallery" class="community-panel">
         <div class="community-intro"><div><h3>Made by the community, for the community</h3><p>Share a fan art piece, cheer others on, and help keep the board kind.</p></div></div>
-        <form id="communityUploadForm" class="community-upload"><label>Artwork title<input id="communityTitle" maxlength="90" required placeholder="Give your art a name"></label><label><span class="community-label-title">Short caption <span>(optional)</span></span><textarea id="communityCaption" maxlength="500" rows="2" placeholder="Tell us a little about it"></textarea></label><label class="community-file-label">Choose a PNG or JPEG image<input id="communityFile" type="file" accept="image/png,image/jpeg" required></label><button type="submit">Share artwork ✨</button><p class="community-small">Sign in to submit. Your image stays private until the creator reviews and approves it. Only approved art appears here; Supabase’s project size limit applies.</p></form>
+        <form id="communityUploadForm" class="community-upload"><label>Artwork title<input id="communityTitle" maxlength="90" required placeholder="Give your art a name"></label><label><span class="community-label-title">Short caption <span>(optional)</span></span><textarea id="communityCaption" maxlength="500" rows="2" placeholder="Tell us a little about it"></textarea></label><label>Artist name or nickname<input id="communityArtistName" maxlength="40" required placeholder="How should we credit you?"></label><label class="community-file-label">Choose a PNG or JPEG image<input id="communityFile" type="file" accept="image/png,image/jpeg" required></label><button type="submit">Share artwork ✨</button><label class="community-terms-consent"><input id="communityTermsAccepted" type="checkbox" required><span>I made this or have permission to share it. I keep ownership and allow ENGENEverse to display and share it with credit. <a href="COMMUNITY_ART_TERMS.md" target="_blank" rel="noopener">Read the terms</a>.</span></label><p class="community-small">OpenAI screens your image and caption for safety. Your image stays private until creator approval; only approved art appears here. Supabase’s project size limit applies.</p></form>
         <div id="communityMine" class="community-mine"></div><div id="communityGalleryGrid" class="community-grid" aria-live="polite"></div>
       </div>
       <div id="communityUpdates" class="community-panel hidden"><div class="community-intro"><div><h3>Updates from the creator</h3><p>One place to see announcements and important news.</p></div></div><div id="communityCreatorPost" class="community-creator hidden"></div><div id="communityAnnouncements" class="community-announcements"></div></div>
@@ -106,8 +106,9 @@
   }
   async function loadGallery() {
     const db = client();
-    const { data, error } = await db.from('community_art').select('id,user_id,title,caption,public_path,moderation_status,vote_count,created_at').eq('moderation_status', 'approved').order('created_at', { ascending: false }).limit(60);
+    const { data, error } = await db.from('community_art').select('id,user_id,title,caption,creator_name,public_path,moderation_status,vote_count,created_at').eq('moderation_status', 'approved').order('created_at', { ascending: false }).limit(60);
     if (error) throw error;
+    state.galleryRows = data || [];
     const ids = (data || []).map((row) => row.id);
     const { data: myVotes, error: voteError } = ids.length ? await db.from('community_art_votes').select('art_id').eq('user_id', state.session.user.id).in('art_id', ids) : { data: [], error: null };
     if (voteError) throw voteError;
@@ -116,7 +117,7 @@
     if (!grid) return;
     grid.innerHTML = data?.length ? data.map((row) => {
       const { data: url } = db.storage.from('community-art-approved').getPublicUrl(row.public_path);
-      return `<article class="community-art-card"><img loading="lazy" src="${escapeHtml(url.publicUrl)}" alt="${escapeHtml(row.title)}"><div class="community-art-copy"><h4>${escapeHtml(row.title)}</h4><p>${escapeHtml(row.caption || '')}</p><div class="community-card-actions"><button type="button" class="community-vote ${voted.has(row.id) ? 'is-voted' : ''}" onclick="communityVote('${row.id}',${voted.has(row.id)})" aria-pressed="${voted.has(row.id)}">${voted.has(row.id) ? '💖' : '🤍'} ${Number(row.vote_count) || 0}</button><button type="button" class="community-report" onclick="communityReport('${row.id}')">Report</button></div></div></article>`;
+      return `<article class="community-art-card"><img loading="lazy" src="${escapeHtml(url.publicUrl)}" alt="${escapeHtml(row.title)}"><div class="community-art-copy"><h4>${escapeHtml(row.title)}</h4><small class="community-artist">by ${escapeHtml(row.creator_name || 'Community artist')}</small><p>${escapeHtml(row.caption || '')}</p><div class="community-card-actions"><button type="button" class="community-vote ${voted.has(row.id) ? 'is-voted' : ''}" onclick="communityVote('${row.id}',${voted.has(row.id)})" aria-pressed="${voted.has(row.id)}">${voted.has(row.id) ? '💖' : '🤍'} ${Number(row.vote_count) || 0}</button><button type="button" class="community-share" onclick="communityShare('${row.id}')" aria-label="Share ${escapeHtml(row.title)}">Share ↗</button><button type="button" class="community-report" onclick="communityReport('${row.id}')">Report</button></div></div></article>`;
     }).join('') : '<div class="community-empty">The board is ready for its first piece. Share something you made ✨</div>';
     const mine = (data || []).filter((row) => row.user_id === state.session.user.id);
     const { data: ownSubmissions, error: ownError } = await db.from('community_art').select('id,title,moderation_status,created_at').eq('user_id', state.session.user.id).neq('moderation_status', 'approved').order('created_at', { ascending: false }).limit(10);
@@ -154,7 +155,7 @@
     form.innerHTML = `<h3>Post an update</h3><form id="communityAnnouncementForm"><label>Title<input id="communityAnnouncementTitle" maxlength="120" required></label><label>Message<textarea id="communityAnnouncementBody" rows="4" maxlength="3000" required></textarea></label><button>Publish to everyone</button></form><div id="communityReviewQueue"></div>`;
     el('communityAnnouncementForm').addEventListener('submit', publishAnnouncement);
     const { review = [], reports = [] } = result;
-    el('communityReviewQueue').innerHTML = `<h3>Artwork review</h3>${review.length ? review.map((row) => `<article class="community-review-card"><div class="community-review-preview"><img class="is-safety-blurred" src="${escapeHtml(row.image_url)}" alt="Artwork preview hidden until you reveal it"><button type="button" class="community-reveal-button" onclick="communityRevealPreview(this)">Reveal preview</button></div><div><b>${escapeHtml(row.title)}</b><p>${escapeHtml(row.caption || '')}</p><small>Private for creator review · Status: ${escapeHtml(row.moderation_status)} · Reports: ${reports.filter((report) => report.art_id === row.id).length}</small><div><button type="button" onclick="communityModerate('${row.id}','approved')">Approve</button> <button type="button" class="secondary" onclick="communityModerate('${row.id}','rejected')">Remove</button></div></div></article>`).join('') : '<p class="community-small">No artwork is waiting for review.</p>'}`;
+    el('communityReviewQueue').innerHTML = `<h3>Artwork review</h3>${review.length ? review.map((row) => `<article class="community-review-card"><div class="community-review-preview"><img class="is-safety-blurred" src="${escapeHtml(row.image_url)}" alt="Artwork preview hidden until you reveal it"><button type="button" class="community-reveal-button" onclick="communityRevealPreview(this)">Reveal preview</button></div><div><b>${escapeHtml(row.title)}</b><p>by ${escapeHtml(row.creator_name || 'Community artist')}</p><p>${escapeHtml(row.caption || '')}</p><small>Private for creator review · Status: ${escapeHtml(row.moderation_status)} · Reports: ${reports.filter((report) => report.art_id === row.id).length}</small><div><button type="button" onclick="communityModerate('${row.id}','approved')">Approve</button> <button type="button" class="secondary" onclick="communityModerate('${row.id}','rejected')">Remove</button></div></div></article>`).join('') : '<p class="community-small">No artwork is waiting for review.</p>'}`;
   }
   async function uploadArtwork(event) {
     event.preventDefault();
@@ -169,7 +170,7 @@
       const jpeg = file.type === 'image/jpeg' && header.length >= 3 && header[0] === 255 && header[1] === 216 && header[2] === 255;
       if (!png && !jpeg) throw new Error('That file does not look like a real PNG or JPEG image.');
       status('Preparing your upload…');
-      const { id, path, token } = await callFunction('upload-url', { title: el('communityTitle').value, caption: el('communityCaption').value, mime: file.type });
+      const { id, path, token } = await callFunction('upload-url', { title: el('communityTitle').value, caption: el('communityCaption').value, creatorName: el('communityArtistName').value, licenseAccepted: el('communityTermsAccepted').checked, mime: file.type });
       status('Uploading and checking your artwork…');
       const { error } = await client().storage.from('community-art-pending').uploadToSignedUrl(path, token, file, { contentType: file.type, upsert: false });
       if (error) throw error;
@@ -207,6 +208,20 @@
     try { await currentSession(); const result = await callFunction('report-art', { id, reason: normalized }); status(result.message || 'Thanks. The artwork was sent for review.'); await loadGallery(); }
     catch (error) { status(error.message.includes('community_art_reports') ? 'The database setup is not finished yet.' : error.message, true); }
   }
+  async function shareArtwork(id) {
+    const row = state.galleryRows.find((item) => item.id === id);
+    if (!row) { status('That artwork is no longer available to share.', true); return; }
+    const { data } = client().storage.from('community-art-approved').getPublicUrl(row.public_path);
+    const artist = row.creator_name || 'Community artist';
+    const shareData = { title: row.title, text: `${row.title} by ${artist} · ENGENEverse Community Board`, url: data.publicUrl };
+    try {
+      if (navigator.share) { await navigator.share(shareData); status('Share sheet opened with the artist credit.'); }
+      else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(data.publicUrl); status('Artwork link copied. Credit: ' + artist + '.'); }
+      else { window.prompt('Copy this artwork link. Credit: ' + artist, data.publicUrl); }
+    } catch (error) {
+      if (error?.name !== 'AbortError') status('Could not share the artwork link. Please try again.', true);
+    }
+  }
   async function publishAnnouncement(event) {
     event.preventDefault();
     try { await callFunction('creator-post', { title: el('communityAnnouncementTitle').value, body: el('communityAnnouncementBody').value }); event.currentTarget.reset(); status('Update published for everyone.'); await loadAnnouncements(false); }
@@ -216,6 +231,7 @@
     try { await callFunction('creator-moderate', { id, decision }); status(decision === 'approved' ? 'Artwork approved.' : 'Artwork removed.'); await checkCreator(); await loadGallery(); }
     catch (error) { status(error.message, true); }
   }
+  window.communityShare = shareArtwork;
   window.communityVote = vote;
   window.communityReport = report;
   window.communityModerate = moderate;
