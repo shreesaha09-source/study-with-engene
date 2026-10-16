@@ -4,8 +4,9 @@
 
 (function(){
 
-  const URL = window.STUDYVERSE_SUPABASE_URL;
-  const KEY = window.STUDYVERSE_SUPABASE_KEY;
+  const config = window.ENGENE_STUDY_AI_CONFIG || {};
+  const URL = window.STUDYVERSE_SUPABASE_URL || config.supabaseUrl;
+  const KEY = window.STUDYVERSE_SUPABASE_KEY || config.supabaseAnonKey;
 
   if(
     !URL ||
@@ -33,6 +34,7 @@
 
 
   const client =
+    window.ENGENE_SUPABASE_CLIENT ||
     window.supabase.createClient(
       URL,
       KEY,
