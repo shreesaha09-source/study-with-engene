@@ -268,10 +268,6 @@ tbody tr:nth-child(even){background:#fff9fb}tbody tr:hover{background:color-mix(
 .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 .widget-drawer{background:linear-gradient(150deg,color-mix(in srgb,var(--accent) 34%,#29242f),color-mix(in srgb,var(--accent-dark) 52%,#19171e));border-color:color-mix(in srgb,var(--accent) 38%,#ffffff33)}
 .drawer-brand-mark{background:var(--accent)!important;color:var(--button-text)!important}
-.sticker-coming-soon{position:relative;display:flex;align-items:center;margin:-3px 0 7px;padding-left:52px}
-.sticker-coming-soon-trigger{width:17px;height:17px;min-width:17px;padding:0;border:1px solid #c6b4d8;border-radius:50%;background:#ffffff15;color:#eee4fa;font-size:10px;line-height:15px;box-shadow:none}
-.sticker-coming-soon-tip{position:absolute;left:74px;top:50%;z-index:30;transform:translateY(-50%) translateX(-4px);padding:7px 9px;border:1px solid #ffffff24;border-radius:9px;background:#1c1922;color:#fff;font-size:10px;white-space:nowrap;opacity:0;visibility:hidden;pointer-events:none;transition:.15s}
-.sticker-coming-soon:hover .sticker-coming-soon-tip,.sticker-coming-soon:focus-within .sticker-coming-soon-tip{opacity:1;visibility:visible;transform:translateY(-50%)}
 .home-study-canvas{margin-top:16px;padding:13px 15px;border:1px solid var(--border);border-radius:17px;background:linear-gradient(135deg,#fffafc,#f8f2fb);box-shadow:0 10px 26px #32101c10}
 .home-study-canvas>summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;color:var(--accent-ink);font-weight:800}
 .home-study-canvas>summary::-webkit-details-marker{display:none}
@@ -492,7 +488,7 @@ tbody tr:nth-child(even){background:#fff9fb}tbody tr:hover{background:color-mix(
         <button class="drawer-widget-card" draggable="true" data-widget-type="water" onclick="addWorkspaceWidget('water')"><span class="drawer-widget-icon media-icon">💧</span><span><b>Moonlit hydration</b><small>Daily water cups · quick add</small></span><span class="drawer-add">＋</span></button>
         <button class="drawer-widget-card" draggable="true" data-widget-type="note" onclick="addWorkspaceWidget('note')"><span class="drawer-widget-icon note-icon">✎</span><span><b>Sticky note</b><small>Make a little room to think</small></span><span class="drawer-add">＋</span></button>
         <button class="drawer-widget-card" draggable="true" data-widget-type="media" onclick="addWorkspaceWidget('media')"><span class="drawer-widget-icon media-icon">♫</span><span><b>Study Media</b><small>Your companion video</small></span><span class="drawer-add">＋</span></button>
-        <button class="drawer-widget-card" draggable="true" data-widget-type="sticker" onclick="addWorkspaceWidget('sticker')"><span class="drawer-widget-icon sticker-icon">♡</span><span><b>Study Sticker</b><small>Enchin + ENGENE phrases</small></span><span class="drawer-add">＋</span></button><div class="sticker-coming-soon"><button type="button" class="sticker-coming-soon-trigger" aria-label="Sticker update" title="Sticker update">!</button><span class="sticker-coming-soon-tip" role="tooltip">guys please wait for enha stickers</span></div>
+        <button class="drawer-widget-card" draggable="true" data-widget-type="sticker" onclick="addWorkspaceWidget('sticker')"><span class="drawer-widget-icon sticker-icon">♡</span><span><b>Study Sticker</b><small>Enchin + ENGENE phrases</small></span><span class="drawer-add">＋</span></button>
         <button class="drawer-widget-card" draggable="true" data-widget-type="planner" onclick="addWorkspaceWidget('planner')"><span class="drawer-widget-icon planner-icon">✧</span><span><b>Planner peek</b><small>Your next study tasks</small></span><span class="drawer-add">＋</span></button>
         <details class="drawer-widget-more"><summary>✧ Progress & goals <span>6 widgets</span></summary><div class="drawer-widget-more-grid">
           <button class="drawer-widget-card" draggable="true" data-widget-type="mission" onclick="addWorkspaceWidget('mission')"><span class="drawer-widget-icon planner-icon">🌙</span><span><b>Today's mission</b><small>Three little checkboxes</small></span><span class="drawer-add">＋</span></button>
@@ -1311,6 +1307,6 @@ document.addEventListener('keydown',event=>{
 <script src="study-ai.js"></script>
 <script src="community.js?v=20261017-review-navigation"></script>
 <script src="studyverse-cloud.js?v=20261017-supabase-config"></script>
-<script src="mini-desk.js?v=20261017-transparent-cutouts"></script>
+<script src="mini-desk.js?v=20261017-custom-stickers"></script>
 
 </body>
