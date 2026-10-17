@@ -130,7 +130,7 @@
   }
   async function loadAnnouncements(markRead) {
     const db = client();
-    const { data: announcements, error } = await db.from('community_announcements').select('id,title,body,published_at').order('published_at', { ascending: false }).limit(50);
+    const { data: announcements, error } = await db.from('community_announcements').select('id,title,body,image_path,published_at').order('published_at', { ascending: false }).limit(50);
     if (error) throw error;
     const ids = (announcements || []).map((row) => row.id);
     const { data: reads, error: readError } = ids.length ? await db.from('community_announcement_reads').select('announcement_id').eq('user_id', state.session.user.id).in('announcement_id', ids) : { data: [], error: null };
@@ -147,7 +147,10 @@
       badge?.classList.add('hidden');
     }
     const list = el('communityAnnouncements');
-    if (list) list.innerHTML = announcements?.length ? announcements.map((row) => `<article class="community-announcement"><time>${new Date(row.published_at).toLocaleString()}</time><h4>${escapeHtml(row.title)}</h4><p>${escapeHtml(row.body).replace(/\n/g, '<br>')}</p>${!readSet.has(row.id) ? '<span class="community-new-tag">NEW</span>' : ''}</article>`).join('') : '<div class="community-empty">No updates yet. Check back here for creator announcements.</div>';
+    if (list) list.innerHTML = announcements?.length ? announcements.map((row) => {
+      const imageUrl = row.image_path ? db.storage.from('community-announcements').getPublicUrl(row.image_path).data.publicUrl : '';
+      return `<article class="community-announcement"><time>${new Date(row.published_at).toLocaleString()}</time>${!readSet.has(row.id) ? '<span class="community-new-tag">NEW</span>' : ''}<h4>${escapeHtml(row.title)}</h4><p>${escapeHtml(row.body).replace(/\n/g, '<br>')}</p>${imageUrl ? `<img class="community-announcement-image" loading="lazy" src="${escapeHtml(imageUrl)}" alt="Image for ${escapeHtml(row.title)}">` : ''}</article>`;
+    }).join('') : '<div class="community-empty">No updates yet. Check back here for creator announcements.</div>';
   }
   async function checkCreator() {
     const result = await callFunction('creator-list').catch(() => null);
@@ -157,8 +160,9 @@
     if (!state.creator) return;
     const form = el('communityCreatorPost');
     form.classList.remove('hidden');
-    form.innerHTML = `<h3>Post an update</h3><form id="communityAnnouncementForm"><label>Title<input id="communityAnnouncementTitle" maxlength="120" required></label><label>Message<textarea id="communityAnnouncementBody" rows="4" maxlength="3000" required></textarea></label><button>Publish to everyone</button></form>`;
+    form.innerHTML = `<h3>Post an update</h3><form id="communityAnnouncementForm"><label>Title<input id="communityAnnouncementTitle" maxlength="120" required></label><label>Message<textarea id="communityAnnouncementBody" rows="4" maxlength="3000" required></textarea></label><label class="community-announcement-upload">Add an image <span>(optional)</span><input id="communityAnnouncementImage" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif"><span class="community-announcement-hint">You can publish text, an image, or both.</span></label><img id="communityAnnouncementPreview" class="community-announcement-preview hidden" alt="Selected update image preview"><button type="submit">Publish to everyone</button></form>`;
     el('communityAnnouncementForm').addEventListener('submit', publishAnnouncement);
+    el('communityAnnouncementImage').addEventListener('change', previewAnnouncementImage);
     const { review = [], reports = [] } = result;
     const reviewQueue = review.filter((row) => row.moderation_status === 'review');
     const reportCount = (id) => reports.filter((report) => report.art_id === id).length;
@@ -242,10 +246,45 @@
       if (error?.name !== 'AbortError') status('Could not share the artwork link. Please try again.', true);
     }
   }
+  function previewAnnouncementImage(event) {
+    const preview = el('communityAnnouncementPreview');
+    const file = event.currentTarget.files?.[0];
+    if (!preview) return;
+    if (preview.dataset.objectUrl) URL.revokeObjectURL(preview.dataset.objectUrl);
+    if (!file) { preview.removeAttribute('src'); preview.dataset.objectUrl = ''; preview.classList.add('hidden'); return; }
+    const objectUrl = URL.createObjectURL(file);
+    preview.dataset.objectUrl = objectUrl;
+    preview.src = objectUrl;
+    preview.classList.remove('hidden');
+  }
   async function publishAnnouncement(event) {
     event.preventDefault();
-    try { await callFunction('creator-post', { title: el('communityAnnouncementTitle').value, body: el('communityAnnouncementBody').value }); event.currentTarget.reset(); status('Update published for everyone.'); await loadAnnouncements(false); }
-    catch (error) { status(error.message, true); }
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    const file = el('communityAnnouncementImage').files?.[0];
+    const title = el('communityAnnouncementTitle').value;
+    const body = el('communityAnnouncementBody').value;
+    let uploadedPath = '';
+    button.disabled = true;
+    try {
+      if (file) {
+        const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif'];
+        if (!allowed.includes(file.type)) throw new Error('Choose a PNG, JPEG, WebP, GIF, or AVIF image.');
+        status('Preparing the image upload…');
+        const { path, token } = await callFunction('creator-image-upload-url', { mime: file.type });
+        uploadedPath = path;
+        const { error } = await client().storage.from('community-announcements').uploadToSignedUrl(path, token, file, { contentType: file.type, upsert: false });
+        if (error) throw error;
+      }
+      await callFunction('creator-post', { title, body, imagePath: uploadedPath || null });
+      form.reset();
+      previewAnnouncementImage({ currentTarget: el('communityAnnouncementImage') });
+      status('Update published for everyone.');
+      await loadAnnouncements(false);
+    } catch (error) {
+      if (uploadedPath) await callFunction('creator-image-discard', { path: uploadedPath }).catch(() => {});
+      status(error.message, true);
+    } finally { button.disabled = false; }
   }
   async function moderate(id, decision) {
     try { await callFunction('creator-moderate', { id, decision }); status(decision === 'approved' ? 'Artwork approved.' : 'Artwork removed.'); await checkCreator(); await loadGallery(); }
