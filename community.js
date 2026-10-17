@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const state = { client: null, session: null, creator: false, tab: 'gallery', loading: false, pulseStop: null, pulseInterval: null, updatePulseInitialized: false, galleryRows: [] };
+  const state = { client: null, session: null, creator: false, tab: 'gallery', loading: false, pulseStop: null, pulseInterval: null, updatePulseInitialized: false, galleryRows: [], analyticsPage: '', analyticsEnteredAt: 0, analyticsSessionId: '', analyticsSource: '' };
   const cfg = () => window.ENGENE_STUDY_AI_CONFIG || {};
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
   const el = (id) => document.getElementById(id);
@@ -76,6 +76,7 @@
       <div class="community-tabs" role="tablist" aria-label="Community sections">
         <button type="button" role="tab" aria-selected="true" data-community-tab="gallery">🎨 Fan Art</button>
         <button type="button" role="tab" aria-selected="false" id="communityUpdatesTab" class="community-update-button" data-community-tab="updates" aria-label="Updates"><span>📣 Updates</span><span class="community-update-dot" aria-hidden="true"></span></button>
+        <button type="button" role="tab" aria-selected="false" id="communityAnalyticsTab" class="hidden" data-community-tab="analytics">📊 Creator analytics</button>
         <button type="button" role="tab" aria-selected="false" id="communityReviewTab" data-community-tab="review" class="hidden">🛡️ Review artwork</button>
       </div>
       <div id="communityGallery" class="community-panel">
@@ -84,6 +85,7 @@
         <div id="communityMine" class="community-mine"></div><div id="communityGalleryGrid" class="community-grid" aria-live="polite"></div>
       </div>
       <div id="communityUpdates" class="community-panel hidden"><div class="community-intro"><div><h3>Updates from the creator</h3><p>One place to see announcements and important news.</p></div></div><div id="communityCreatorPost" class="community-creator hidden"></div><div id="communityAnnouncements" class="community-announcements"></div></div>
+      <div id="communityAnalyticsPanel" class="community-panel hidden"></div>
       <div id="communityReviewPanel" class="community-panel hidden"><div id="communityReviewQueue"></div></div>
       <div id="communityStatus" class="community-status" role="status" aria-live="polite"></div>`;
     const shell = document.querySelector('.shell');
@@ -93,12 +95,14 @@
     el('communityUploadForm')?.addEventListener('submit', uploadArtwork);
   }
   function setTab(tab) {
-    state.tab = ['updates', 'review'].includes(tab) ? tab : 'gallery';
+    state.tab = ['updates', 'review', 'analytics'].includes(tab) ? tab : 'gallery';
     document.querySelectorAll('[data-community-tab]').forEach((button) => button.setAttribute('aria-selected', String(button.dataset.communityTab === state.tab)));
     el('communityGallery')?.classList.toggle('hidden', state.tab !== 'gallery');
     el('communityUpdates')?.classList.toggle('hidden', state.tab !== 'updates');
     el('communityReviewPanel')?.classList.toggle('hidden', state.tab !== 'review');
+    el('communityAnalyticsPanel')?.classList.toggle('hidden', state.tab !== 'analytics');
     if (state.tab === 'updates') { dismissUpdateDot(); loadAnnouncements(true).catch((e) => status(e.message, true)); }
+    if (state.tab === 'analytics' && state.creator) loadCreatorAnalytics().catch((e) => status(e.message, true));
   }
   async function init() {
     install();
@@ -156,7 +160,9 @@
     const result = await callFunction('creator-list').catch(() => null);
     state.creator = Boolean(result);
     const reviewTab = el('communityReviewTab');
+    const analyticsTab = el('communityAnalyticsTab');
     if (reviewTab) reviewTab.classList.toggle('hidden', !state.creator);
+    if (analyticsTab) analyticsTab.classList.toggle('hidden', !state.creator);
     if (!state.creator) return;
     const form = el('communityCreatorPost');
     form.classList.remove('hidden');
@@ -169,6 +175,48 @@
     if (reviewTab) reviewTab.textContent = `🛡️ Review artwork${reviewQueue.length ? ` (${reviewQueue.length})` : ''}`;
     const queue = el('communityReviewQueue');
     if (queue) queue.innerHTML = `<div class="community-intro"><div><h3>Artwork review</h3><p>Open each picture, then approve it to publish it on Fan Art or remove it from the board.</p></div></div>${reviewQueue.length ? reviewQueue.map((row) => `<article class="community-review-card"><div class="community-review-preview"><img class="is-safety-blurred" src="${escapeHtml(row.image_url)}" alt="Artwork preview blurred until revealed"><button type="button" class="community-reveal-button" onclick="communityRevealPreview(this)">Reveal picture</button><a class="community-review-open" href="${escapeHtml(row.image_url)}" target="_blank" rel="noopener noreferrer">Open full size ↗</a></div><div class="community-review-details"><h4>${escapeHtml(row.title)}</h4><p>by ${escapeHtml(row.creator_name || 'Community artist')}</p>${row.caption ? `<p>${escapeHtml(row.caption)}</p>` : ''}<small>Waiting for approval${reportCount(row.id) ? ` · Reports: ${reportCount(row.id)}` : ''}</small><div class="community-review-actions"><button type="button" onclick="communityModerate('${row.id}','approved')">Approve and publish</button> <button type="button" class="secondary" onclick="communityModerate('${row.id}','rejected')">Remove artwork</button></div></div></article>`).join('') : '<p class="community-empty">There is no artwork waiting for review right now.</p>'}`;
+  }
+  async function loadCreatorAnalytics() {
+    const panel = el('communityAnalyticsPanel');
+    if (!panel || !state.creator) return;
+    panel.innerHTML = '<div class="community-empty">Loading your site reach…</div>';
+    const data = await callFunction('creator-analytics');
+    const duration = Number(data.average_session_seconds) || 0;
+    const durationLabel = duration >= 60 ? `${Math.floor(duration / 60)}m ${duration % 60}s` : `${duration}s`;
+    const maxViews = Math.max(1, ...(data.series || []).map((point) => Number(point.views) || 0));
+    const chart = (data.series || []).map((point) => `<div class="creator-analytics-bar" title="${escapeHtml(point.date)}: ${point.visitors} visitors, ${point.views} page views"><span style="height:${Math.max(point.views ? 8 : 2, Math.round((point.views / maxViews) * 100))}%"></span></div>`).join('');
+    const sources = (data.sources || []).length ? data.sources.map((item) => `<li><span>${escapeHtml(item.source)}</span><b>${Number(item.visitors) || 0}</b></li>`).join('') : '<li><span>No visits recorded yet</span><b>0</b></li>';
+    const pages = (data.pages || []).length ? data.pages.map((item) => `<li><span>${escapeHtml(item.page)}</span><b>${Number(item.views) || 0}</b></li>`).join('') : '<li><span>No page views recorded yet</span><b>0</b></li>';
+    panel.innerHTML = `<div class="community-intro"><div><h3>Your site reach</h3><p>Anonymous first-party activity from the last ${Number(data.period_days) || 30} days.</p></div><button type="button" class="ghost" onclick="communityRefreshAnalytics()">Refresh</button></div><div class="creator-analytics-metrics"><article><span>Visitors</span><strong>${Number(data.visitors) || 0}</strong></article><article><span>Page views</span><strong>${Number(data.page_views) || 0}</strong></article><article><span>Engagement rate</span><strong>${Number(data.engagement_rate) || 0}%</strong></article><article><span>Bounce rate</span><strong>${Number(data.bounce_rate) || 0}%</strong></article><article><span>Average session</span><strong>${durationLabel}</strong></article></div><section class="creator-analytics-chart"><h4>Daily page views · last 30 days</h4><div class="creator-analytics-bars">${chart}</div><div class="creator-analytics-axis"><span>${escapeHtml(data.series?.[0]?.date || '')}</span><span>Today</span></div></section><div class="creator-analytics-lists"><section><h4>Traffic sources</h4><ul>${sources}</ul></section><section><h4>Popular pages</h4><ul>${pages}</ul></section></div><p class="community-analytics-note">Engaged sessions include visits lasting 10 seconds or longer, or visits to more than one page. Bounce rate is the remaining share. Referrals store only the source host, not the full referring URL. Analytics begins when this version goes live.</p>`;
+  }
+  function sendAnalyticsEvent(eventType, page, durationSeconds = 0) {
+    const c = cfg();
+    if (!c.supabaseUrl || !c.supabaseAnonKey || navigator.doNotTrack === '1') return;
+    fetch(`${String(c.supabaseUrl).replace(/\/$/, '')}/functions/v1/site-analytics`, {
+      method: 'POST', keepalive: true,
+      headers: { 'Content-Type': 'application/json', apikey: c.supabaseAnonKey, Authorization: `Bearer ${c.supabaseAnonKey}` },
+      body: JSON.stringify({ session_id: state.analyticsSessionId, event_type: eventType, page, source: state.analyticsSource, duration_seconds: durationSeconds }),
+    }).catch(() => {});
+  }
+  function trackSitePage(page) {
+    if (navigator.doNotTrack === '1') return;
+    if (!state.analyticsSessionId) {
+      try {
+        state.analyticsSessionId = sessionStorage.getItem('engene-site-analytics-session') || crypto.randomUUID();
+        sessionStorage.setItem('engene-site-analytics-session', state.analyticsSessionId);
+        state.analyticsSource = sessionStorage.getItem('engene-site-analytics-source') || '';
+        if (!state.analyticsSource) {
+          const referrer = document.referrer ? new URL(document.referrer) : null;
+          state.analyticsSource = !referrer || referrer.origin === location.origin ? 'direct' : referrer.hostname.toLowerCase();
+          sessionStorage.setItem('engene-site-analytics-source', state.analyticsSource);
+        }
+      } catch (_) { return; }
+    }
+    const nextPage = String(page || 'home').replace(/[^a-z0-9_-]/gi, '').slice(0, 80) || 'home';
+    if (state.analyticsPage) sendAnalyticsEvent('page_end', state.analyticsPage, Math.floor((Date.now() - state.analyticsEnteredAt) / 1000));
+    state.analyticsPage = nextPage;
+    state.analyticsEnteredAt = Date.now();
+    sendAnalyticsEvent('page_view', nextPage);
   }
   async function uploadArtwork(event) {
     event.preventDefault();
@@ -296,6 +344,7 @@
   window.communityModerate = moderate;
   window.communityRevealPreview = revealPreview;
   window.communityRevealArtwork = revealArtwork;
+  window.communityRefreshAnalytics = () => loadCreatorAnalytics().catch((e) => status(e.message, true));
   window.showCommunity = () => { if (window.showView) window.showView('community'); init().catch((e) => status(e.message, true)); };
   document.addEventListener('DOMContentLoaded', () => {
     install();
@@ -303,9 +352,15 @@
     if (typeof originalShowView === 'function') {
       window.showView = function (id) {
         originalShowView(id);
+        trackSitePage(id);
         if (id === 'community') { init().catch((e) => status(e.message, true)); setTab(state.tab); }
       };
     }
+    const activeView = document.querySelector('.view:not(.hidden)')?.id || 'home';
+    trackSitePage(activeView);
+    window.addEventListener('pagehide', () => {
+      if (state.analyticsPage) sendAnalyticsEvent('page_end', state.analyticsPage, Math.floor((Date.now() - state.analyticsEnteredAt) / 1000));
+    });
     window.setTimeout(() => init().catch(() => {}), 800);
     window.setInterval(() => { if (state.session && document.visibilityState === 'visible') loadAnnouncements(false).catch(() => {}); }, 60000);
   });
