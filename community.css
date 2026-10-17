@@ -18,3 +18,18 @@
 .community-creator{margin:0 0 18px;padding:17px;border:1px solid #e8cbd8;border-radius:16px;background:#fff8fb}.community-creator form{display:grid;grid-template-columns:1fr 2fr auto;align-items:end;gap:11px}.community-creator form h3{grid-column:1/-1}.community-creator textarea{resize:vertical}.community-review-card{display:grid;grid-template-columns:116px 1fr;align-items:center;gap:14px;padding:13px;margin-top:10px;border:1px solid #ead8e1;border-radius:14px;background:#fff}.community-review-preview{position:relative;width:116px;height:116px;overflow:hidden;border-radius:10px;background:#f8f0f3}.community-review-card img{display:block;width:100%;height:100%;object-fit:cover;transition:filter .2s}.community-review-card img.is-safety-blurred{filter:blur(18px) brightness(.8);transform:scale(1.12)}.community-reveal-button{position:absolute;inset:auto 6px 6px;width:calc(100% - 12px);padding:6px 5px;border:1px solid #fff9;border-radius:8px;background:#fff;color:#55374a;box-shadow:none;font-size:10px}.community-review-card p{margin:4px 0;color:#786b76}.community-review-card small{display:block;margin-bottom:8px;color:#776572;line-height:1.4}.community-status{min-height:20px;margin:12px 0 0;color:#6d4559;font-weight:700}.community-status[data-error=true]{color:#b43651}.community-view button:disabled{opacity:.6;cursor:wait}
 @media(max-width:760px){.community-upload{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:16px}.community-file-label{grid-column:1/-1}.community-upload button{grid-column:1/-1;width:100%}.community-small{grid-column:1/-1}}
 @media(max-width:520px){.community-upload{grid-template-columns:1fr}.community-upload>label,.community-file-label,.community-upload button,.community-small{grid-column:1}.community-creator form{grid-template-columns:1fr}.community-review-card{grid-template-columns:84px 1fr;gap:10px;padding:10px}.community-review-preview{width:84px;height:84px}.community-tabs{width:100%}.community-tabs button{flex:1;padding:8px 9px;font-size:12px}}
+
+/* Creator review: give the image room and keep the decision actions easy to find. */
+.community-review-card{grid-template-columns:minmax(220px,320px) minmax(0,1fr);align-items:start;gap:20px;padding:18px}
+.community-review-preview{position:relative;width:100%;height:280px;overflow:hidden;border:1px solid #eadde4;border-radius:13px;background:#f8f0f3}
+.community-review-card .community-review-preview img{object-fit:contain}
+.community-review-card .community-review-preview img.is-safety-blurred{filter:blur(18px) brightness(.8);transform:scale(1.06)}
+.community-reveal-button{z-index:1;inset:50% auto auto 50%;width:max-content;max-width:calc(100% - 20px);padding:9px 12px;transform:translate(-50%,-50%);font-size:12px;font-weight:700}
+.community-reveal-button:hover{transform:translate(-50%,-50%)}
+.community-review-open{position:absolute;right:8px;bottom:8px;padding:7px 10px;border:1px solid #eadde4;border-radius:9px;background:#fff;color:#68435a;font-size:12px;font-weight:700;text-decoration:none}
+.community-review-details h4{margin:2px 0 8px;color:#55243b;font-size:19px}
+.community-review-details small{margin:12px 0;color:#776572}
+.community-review-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.community-review-actions button{min-height:42px}
+@media(max-width:680px){.community-review-card{grid-template-columns:1fr}.community-review-preview{height:min(70vw,360px)}}
+
