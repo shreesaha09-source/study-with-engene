@@ -114,12 +114,15 @@
   const previousLoadWorkspace = window.loadWorkspace;
   window.loadWorkspace = function (...args) {
     const savedWorkspace = loadJSON(WORKSPACE_KEY, {});
-    const savedStickerMembers = new Map((savedWorkspace.widgets || []).filter(widget => widget?.type === 'sticker').map(widget => [String(widget.id), widget.stickerMember]));
+    const savedStickerWidgets = new Map((savedWorkspace.widgets || []).filter(widget => widget?.type === 'sticker').map(widget => [String(widget.id), widget]));
     const result = previousLoadWorkspace.apply(this, args);
     workspaceModel.widgets.forEach(widget => {
       if (widget.type === 'sticker') {
-        const savedMember = savedStickerMembers.get(String(widget.id));
-        widget.stickerMember = members.includes(savedMember) ? savedMember : settings.member;
+        const savedSticker = savedStickerWidgets.get(String(widget.id)) || {};
+        widget.stickerMember = members.includes(savedSticker.stickerMember) ? savedSticker.stickerMember : settings.member;
+        widget.stickerCustomText = String(savedSticker.stickerCustomText || '').slice(0, 120);
+        widget.stickerCustomImage = typeof savedSticker.stickerCustomImage === 'string' && /^data:image\/(?:png|jpeg);base64,/.test(savedSticker.stickerCustomImage) ? savedSticker.stickerCustomImage : '';
+        widget.stickerCustomActive = ['text', 'image'].includes(savedSticker.stickerCustomActive) ? savedSticker.stickerCustomActive : '';
       }
     });
     return result;
@@ -136,12 +139,17 @@
   window.workspaceWidgetMarkup = function (widget) {
     const markup = previousWorkspaceWidgetMarkup.call(this, widget);
     if (widget.type !== 'sticker') return markup;
-    const selected = widget.stickerImage
+    const customImage = typeof widget.stickerCustomImage === 'string' && /^data:image\/(?:png|jpeg);base64,/.test(widget.stickerCustomImage) ? widget.stickerCustomImage : '';
+    const customText = String(widget.stickerCustomText || '').trim();
+    const visibleCustomImage = widget.stickerCustomActive === 'image' ? customImage : '';
+    const selected = widget.stickerCustomActive === 'image' && customImage ? 'custom:image' : (widget.stickerCustomActive === 'text' && customText ? 'custom:text' : (widget.stickerImage
       ? 'member:' + (members.includes(widget.stickerMember) ? widget.stickerMember : settings.member)
-      : 'text:' + Math.max(0, STUDY_STICKER_QUOTES.indexOf(widget.stickerText || STUDY_STICKER_QUOTES[0]));
-    const stickerChoices = '<div class="workspace-widget-content"><div class="sticker-card">' + (widget.stickerImage
-      ? '<img class="sticker-member" src="' + esc(memberImages[widget.stickerMember] || memberImages[settings.member]) + '" alt="' + esc(memberDisplay(widget.stickerMember)) + ' character sticker">'
-      : '<span class="sticker-emoji">' + esc(widget.sticker || '✦') + '</span><span class="sticker-quote">' + esc(widget.stickerText || STUDY_STICKER_QUOTES[0]) + '</span>') + '</div><select class="sticker-choice" data-sticker-choice aria-label="Choose a study sticker"><optgroup label="Text stickers">' + STUDY_STICKER_QUOTES.map((quote, index) => '<option value="text:' + index + '" ' + (selected === 'text:' + index ? 'selected' : '') + '>' + esc(quote) + '</option>').join('') + '</optgroup><optgroup label="Character cutouts">' + members.map(member => '<option value="member:' + esc(member) + '" ' + (selected === 'member:' + member ? 'selected' : '') + '>' + esc(memberDisplay(member)) + '</option>').join('') + '</optgroup></select></div>';
+      : 'text:' + Math.max(0, STUDY_STICKER_QUOTES.indexOf(widget.stickerText || STUDY_STICKER_QUOTES[0]))));
+    const stickerBody = widget.stickerImage
+      ? '<img class="sticker-member" src="' + esc(visibleCustomImage || memberImages[widget.stickerMember] || memberImages[settings.member]) + '" alt="' + esc(visibleCustomImage ? 'Your custom sticker' : memberDisplay(widget.stickerMember) + ' character sticker') + '">'
+      : '<span class="sticker-emoji">' + esc(widget.sticker || '✦') + '</span><span class="sticker-quote">' + esc(widget.stickerCustomActive === 'text' ? customText : (widget.stickerText || STUDY_STICKER_QUOTES[0])) + '</span>';
+    const customOptions = (customText ? '<option value="custom:text" ' + (selected === 'custom:text' ? 'selected' : '') + '>My text sticker</option>' : '') + (customImage ? '<option value="custom:image" ' + (selected === 'custom:image' ? 'selected' : '') + '>My image sticker</option>' : '') + '<option value="create:new">Create a sticker…</option>';
+    const stickerChoices = '<div class="workspace-widget-content"><div class="sticker-card" data-sticker-body role="button" tabindex="0" aria-label="Click to choose a different sticker">' + stickerBody + '</div><select class="sticker-choice" data-sticker-choice aria-label="Choose a study sticker"><optgroup label="Text stickers">' + STUDY_STICKER_QUOTES.map((quote, index) => '<option value="text:' + index + '" ' + (selected === 'text:' + index ? 'selected' : '') + '>' + esc(quote) + '</option>').join('') + '</optgroup><optgroup label="Character cutouts">' + members.map(member => '<option value="member:' + esc(member) + '" ' + (selected === 'member:' + member ? 'selected' : '') + '>' + esc(memberDisplay(member)) + '</option>').join('') + '</optgroup>' + (customText || customImage ? '<optgroup label="Your stickers">' + customOptions + '</optgroup>' : '<optgroup label="Create">' + customOptions + '</optgroup>') + '</select></div>';
     const stickerMarkup = markup.replace(/<div class="workspace-widget-content"><div class="sticker-card">[\s\S]*?<\/select><\/div>/, stickerChoices);
     return widget.stickerImage
       ? stickerMarkup.replace('class="workspace-widget ', 'class="workspace-widget member-cutout-mode ')
@@ -155,21 +163,225 @@
     const widget = workspaceModel.widgets.find(item => item.id === widgetElement?.dataset.widgetId);
     if (!widget) return;
     const [kind, value] = picker.value.split(':');
-    if (kind === 'member' && members.includes(value)) {
+    if (kind === 'create') {
+      picker.value = widget.stickerCustomActive === 'image' && widget.stickerCustomImage ? 'custom:image' : (widget.stickerCustomActive === 'text' && widget.stickerCustomText ? 'custom:text' : (widget.stickerImage ? 'member:' + (members.includes(widget.stickerMember) ? widget.stickerMember : settings.member) : 'text:' + Math.max(0, STUDY_STICKER_QUOTES.indexOf(widget.stickerText || STUDY_STICKER_QUOTES[0]))));
+      openStickerCreator(widget.id);
+      return;
+    }
+    if (kind === 'custom' && value === 'text' && widget.stickerCustomText) {
+      widget.stickerImage = false;
+      widget.stickerText = '';
+      widget.stickerCustomActive = 'text';
+    } else if (kind === 'custom' && value === 'image' && widget.stickerCustomImage) {
+      widget.stickerImage = true;
+      widget.stickerCustomActive = 'image';
+    } else if (kind === 'member' && members.includes(value)) {
       widget.stickerImage = true;
       widget.stickerMember = value;
+      widget.stickerCustomActive = '';
       widget.stickerText = '';
     } else if (kind === 'text') {
       widget.stickerImage = false;
       widget.stickerText = STUDY_STICKER_QUOTES[Number(value)] || STUDY_STICKER_QUOTES[0];
+      widget.stickerCustomActive = '';
     } else return;
     saveWorkspace();
     renderWorkspace();
   });
 
+  function openStickerCreator(widgetId) {
+    let dialog = document.getElementById('customStickerDialog');
+    if (!dialog) {
+      dialog = document.createElement('dialog');
+      dialog.id = 'customStickerDialog';
+      dialog.className = 'custom-sticker-dialog';
+      dialog.innerHTML = '<form class="custom-sticker-form"><header><div><small>YOUR DESK, YOUR STYLE</small><h3>Create a sticker</h3></div><button type="button" class="custom-sticker-close" data-sticker-close aria-label="Close">×</button></header><label class="custom-sticker-kind">Sticker type<select data-custom-sticker-kind><option value="text">Custom text</option><option value="image">Upload an image</option></select></label><label class="custom-sticker-field" data-custom-text-panel>Sticker text<input data-custom-sticker-text maxlength="120" placeholder="Write a tiny reminder or phrase"></label><section class="custom-sticker-field" data-custom-image-panel hidden><label>Choose a PNG or JPEG image<input data-custom-sticker-file type="file" accept="image/png,image/jpeg"></label><div class="custom-sticker-editor" data-custom-sticker-editor hidden><canvas data-sticker-canvas></canvas><p data-sticker-editor-status>Pick a background color to remove, or erase it by hand.</p><div class="custom-sticker-tools"><button type="button" data-pick-background>Pick &amp; remove color</button><button type="button" data-erase-mode>Erase</button><button type="button" data-restore-mode>Restore</button></div><label class="custom-sticker-range">Color tolerance <input data-background-tolerance type="range" min="12" max="120" value="48"></label><label class="custom-sticker-range">Brush size <input data-eraser-size type="range" min="4" max="60" value="24"></label><small>Color removal works best on plain backgrounds. Erase and restore refine the edges.</small></div></section><p class="custom-sticker-error" data-custom-sticker-error role="status"></p><footer><button type="button" class="custom-sticker-cancel" data-sticker-close>Cancel</button><button type="submit" class="custom-sticker-save">Add sticker</button></footer></form>';
+      document.body.appendChild(dialog);
+      const editor = dialog.__stickerEditor = { original: null, sample: null, mode: 'preview', painting: false };
+      const kindPicker = dialog.querySelector('[data-custom-sticker-kind]');
+      kindPicker.addEventListener('change', () => {
+        dialog.querySelector('[data-custom-text-panel]').hidden = kindPicker.value !== 'text';
+        dialog.querySelector('[data-custom-image-panel]').hidden = kindPicker.value !== 'image';
+        dialog.querySelector('[data-custom-sticker-error]').textContent = '';
+      });
+      const canvas = dialog.querySelector('[data-sticker-canvas]');
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      const status = dialog.querySelector('[data-sticker-editor-status]');
+      const tolerance = dialog.querySelector('[data-background-tolerance]');
+      const fileInput = dialog.querySelector('[data-custom-sticker-file]');
+      const fileToCanvas = file => {
+        if (!file || !['image/png', 'image/jpeg'].includes(file.type)) { dialog.querySelector('[data-custom-sticker-error]').textContent = 'Choose a PNG or JPEG image.'; return; }
+        if (file.size > 512 * 1024) { dialog.querySelector('[data-custom-sticker-error]').textContent = 'That image is over 512 KB. Please choose a smaller file.'; return; }
+        const reader = new FileReader();
+        reader.onerror = () => { dialog.querySelector('[data-custom-sticker-error]').textContent = 'The image could not be read. Please choose it again.'; };
+        reader.onload = () => {
+          const image = new Image();
+          image.onerror = () => { dialog.querySelector('[data-custom-sticker-error]').textContent = 'That image could not be opened.'; };
+          image.onload = () => {
+            const scale = Math.min(1, 480 / Math.max(image.naturalWidth, image.naturalHeight));
+            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            editor.original = context.getImageData(0, 0, canvas.width, canvas.height);
+            editor.sample = null;
+            editor.mode = 'preview';
+            dialog.querySelector('[data-custom-sticker-editor]').hidden = false;
+            dialog.querySelector('[data-custom-sticker-error]').textContent = '';
+            status.textContent = 'Pick a background color to remove, or erase it by hand.';
+          };
+          image.src = String(reader.result);
+        };
+        reader.readAsDataURL(file);
+      };
+      fileInput.addEventListener('change', () => fileToCanvas(fileInput.files?.[0]));
+      dialog.querySelector('[data-pick-background]').addEventListener('click', () => {
+        if (!editor.original) return;
+        editor.mode = 'sample';
+        status.textContent = 'Click the background color in the image to remove matching connected pixels.';
+      });
+      dialog.querySelector('[data-erase-mode]').addEventListener('click', () => { editor.mode = 'erase'; status.textContent = 'Drag over the image to erase. Use Restore to paint pixels back.'; });
+      dialog.querySelector('[data-restore-mode]').addEventListener('click', () => { editor.mode = 'restore'; status.textContent = 'Drag over the image to restore the original pixels.'; });
+      const removeSampledBackground = () => {
+        if (!editor.original || !editor.sample) return;
+        const width = canvas.width, height = canvas.height, total = width * height;
+        const source = editor.original.data;
+        const output = new ImageData(new Uint8ClampedArray(source), width, height);
+        const pixels = output.data, seen = new Uint8Array(total), queue = new Int32Array(total);
+        const threshold = Number(tolerance.value) ** 2 * 3, sample = editor.sample;
+        let read = 0, write = 0;
+        const enqueue = index => {
+          if (index < 0 || index >= total || seen[index]) return;
+          seen[index] = 1;
+          const offset = index * 4, dr = source[offset] - sample[0], dg = source[offset + 1] - sample[1], db = source[offset + 2] - sample[2];
+          if (dr * dr + dg * dg + db * db <= threshold) queue[write++] = index;
+        };
+        for (let x = 0; x < width; x++) { enqueue(x); enqueue((height - 1) * width + x); }
+        for (let y = 1; y < height - 1; y++) { enqueue(y * width); enqueue(y * width + width - 1); }
+        while (read < write) {
+          const index = queue[read++];
+          pixels[index * 4 + 3] = 0;
+          const x = index % width, y = Math.floor(index / width);
+          if (x > 0) enqueue(index - 1); if (x + 1 < width) enqueue(index + 1);
+          if (y > 0) enqueue(index - width); if (y + 1 < height) enqueue(index + width);
+        }
+        context.putImageData(output, 0, 0);
+        editor.mode = 'preview';
+        status.textContent = 'Background removed. Use Erase or Restore to refine the cutout.';
+      };
+      tolerance.addEventListener('input', () => { if (editor.sample) removeSampledBackground(); });
+      const paintAt = event => {
+        if (!editor.original || !['erase', 'restore'].includes(editor.mode)) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = Math.round((event.clientX - rect.left) * canvas.width / rect.width);
+        const y = Math.round((event.clientY - rect.top) * canvas.height / rect.height);
+        const radius = Math.max(2, Number(dialog.querySelector('[data-eraser-size]').value));
+        const current = context.getImageData(0, 0, canvas.width, canvas.height);
+        const data = current.data, original = editor.original.data;
+        for (let py = Math.max(0, y - radius); py <= Math.min(canvas.height - 1, y + radius); py++) {
+          for (let px = Math.max(0, x - radius); px <= Math.min(canvas.width - 1, x + radius); px++) {
+            const dx = px - x, dy = py - y;
+            if (dx * dx + dy * dy > radius * radius) continue;
+            const offset = (py * canvas.width + px) * 4;
+            if (editor.mode === 'erase') data[offset + 3] = 0;
+            else { data[offset] = original[offset]; data[offset + 1] = original[offset + 1]; data[offset + 2] = original[offset + 2]; data[offset + 3] = original[offset + 3]; }
+          }
+        }
+        context.putImageData(current, 0, 0);
+      };
+      canvas.addEventListener('pointerdown', event => {
+        if (editor.mode === 'sample') {
+          const rect = canvas.getBoundingClientRect(), x = Math.max(0, Math.min(canvas.width - 1, Math.floor((event.clientX - rect.left) * canvas.width / rect.width))), y = Math.max(0, Math.min(canvas.height - 1, Math.floor((event.clientY - rect.top) * canvas.height / rect.height)));
+          const pixel = context.getImageData(x, y, 1, 1).data;
+          editor.sample = [pixel[0], pixel[1], pixel[2]];
+          removeSampledBackground();
+          return;
+        }
+        if (!['erase', 'restore'].includes(editor.mode)) return;
+        editor.painting = true;
+        canvas.setPointerCapture(event.pointerId);
+        paintAt(event);
+        event.preventDefault();
+      });
+      canvas.addEventListener('pointermove', event => { if (editor.painting) paintAt(event); });
+      canvas.addEventListener('pointerup', () => { editor.painting = false; });
+      canvas.addEventListener('pointercancel', () => { editor.painting = false; });
+      dialog.querySelectorAll('[data-sticker-close]').forEach(button => button.addEventListener('click', () => dialog.close()));
+      dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+      dialog.addEventListener('close', () => {
+        dialog.querySelector('form').reset();
+        dialog.querySelector('[data-custom-text-panel]').hidden = false;
+        dialog.querySelector('[data-custom-image-panel]').hidden = true;
+        dialog.querySelector('[data-custom-sticker-editor]').hidden = true;
+        editor.original = null; editor.sample = null; editor.mode = 'preview'; editor.painting = false;
+      });
+      dialog.querySelector('form').addEventListener('submit', event => {
+        event.preventDefault();
+        const target = workspaceModel.widgets.find(item => item.id === dialog.dataset.widgetId && item.type === 'sticker');
+        if (!target) { dialog.close(); return; }
+        const error = dialog.querySelector('[data-custom-sticker-error]');
+        if (kindPicker.value === 'text') {
+          const text = dialog.querySelector('[data-custom-sticker-text]').value.trim();
+          if (!text) { error.textContent = 'Type some sticker text first.'; return; }
+          target.stickerImage = false;
+          target.stickerText = '';
+          target.stickerCustomText = text.slice(0, 120);
+          target.stickerCustomActive = 'text';
+          saveWorkspace();
+          renderWorkspace();
+          dialog.close();
+          return;
+        }
+        if (!editor.original) { error.textContent = 'Choose an image before adding this sticker.'; return; }
+        const dataUrl = canvas.toDataURL('image/png');
+        if (dataUrl.length > 700 * 1024) { error.textContent = 'This cutout is too large to save here. Choose a smaller image.'; return; }
+        target.stickerImage = true;
+        target.stickerCustomImage = dataUrl;
+        target.stickerCustomActive = 'image';
+        saveWorkspace();
+        renderWorkspace();
+        dialog.close();
+      });
+    }
+    dialog.dataset.widgetId = String(widgetId);
+    dialog.showModal();
+  }
+
+  function toggleStickerPicker(sticker) {
+    if (!sticker) return;
+    const wasOpen = sticker.classList.contains('sticker-picker-open');
+    document.querySelectorAll('.sticker-widget.sticker-picker-open').forEach(openSticker => openSticker.classList.remove('sticker-picker-open'));
+    if (!wasOpen) sticker.classList.add('sticker-picker-open');
+  }
+
+  document.addEventListener('click', event => {
+    if (event.target.closest('[data-sticker-choice]')) return;
+    const body = event.target.closest('[data-sticker-body]');
+    if (body) {
+      toggleStickerPicker(body.closest('.sticker-widget'));
+      return;
+    }
+    if (!event.target.closest('.sticker-widget')) {
+      document.querySelectorAll('.sticker-widget.sticker-picker-open').forEach(sticker => sticker.classList.remove('sticker-picker-open'));
+    }
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.target.matches('[data-sticker-body]') && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      toggleStickerPicker(event.target.closest('.sticker-widget'));
+    } else if (event.key === 'Escape') {
+      document.querySelectorAll('.sticker-widget.sticker-picker-open').forEach(sticker => sticker.classList.remove('sticker-picker-open'));
+    }
+  });
+
   const stickerStyles = document.createElement('style');
-  stickerStyles.textContent = '.sticker-widget .sticker-member{width:auto;height:94px;max-width:150px;object-fit:contain;background:transparent;filter:drop-shadow(0 5px 7px #35243830)}.sticker-widget .sticker-card{min-height:96px;justify-content:center}.sticker-widget .sticker-choice{max-width:100%;font-size:10px}.sticker-widget.member-cutout-mode{background:transparent!important;border-color:transparent!important;box-shadow:none!important;backdrop-filter:none!important;overflow:visible;border-radius:0}.sticker-widget.member-cutout-mode .workspace-widget-content{background:transparent!important;padding:0!important;overflow:visible}.sticker-widget.member-cutout-mode .sticker-card{min-height:0;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}.sticker-widget.member-cutout-mode .sticker-member{height:140px;max-width:180px;filter:drop-shadow(0 7px 8px #35243828)}.sticker-widget.member-cutout-mode .workspace-widget-head{opacity:0}.sticker-widget.member-cutout-mode:hover .workspace-widget-head,.sticker-widget.member-cutout-mode:focus-within .workspace-widget-head{opacity:1}.sticker-widget.member-cutout-mode .widget-resize-grip{background:transparent}.mini-desk-timer:not(.is-break){background:linear-gradient(145deg,#a95e52,#ce8067)}.mini-desk-timer.is-break{background:linear-gradient(145deg,#49675e,#6e9685)}.mini-desk-timer-row #miniDeskToggle{background:linear-gradient(135deg,#b96052,#d77f65);color:#fff}.mini-desk-timer.is-break #miniDeskToggle{background:linear-gradient(135deg,#608d79,#83ad94);color:#fff}.mini-desk-timer-row #miniDeskSoundToggle{flex:0 0 38px;background:#ffffff20;border:1px solid #ffffff55;color:#fff}.mini-desk-session-tally{padding:6px 16px;border-bottom:1px solid #6e4f5c16;color:#7c6678;font-size:10px;font-weight:700;text-align:center}.mini-desk-task{display:grid;gap:6px;padding:8px 9px}.mini-desk-task-line{display:flex;align-items:center;gap:8px;min-width:0}.mini-desk-task-name{flex:1;min-width:0;overflow:hidden;color:#514453;font-weight:800;text-overflow:ellipsis;white-space:nowrap}.mini-desk-task-start{flex:0 0 27px;width:27px;height:27px;padding:0;border:1px solid #e8d9e5;border-radius:9px;background:#f7eef5;color:#76506c;box-shadow:none}.mini-desk-task-progress{height:4px;overflow:hidden;border-radius:99px;background:#eee8ef}.mini-desk-task-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#b67aa4,#8565b6)}.mini-desk-note-meta{display:flex;justify-content:space-between;gap:8px;margin:5px 2px;color:#938594;font-size:9px}.mini-desk-note-saved{color:#628372;font-weight:700}.mini-desk-links button{display:inline-flex;align-items:center;justify-content:center;gap:5px}.mini-desk-links svg{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}';
+  stickerStyles.textContent = '.sticker-widget .sticker-member{width:auto;height:94px;max-width:150px;object-fit:contain;background:transparent;filter:drop-shadow(0 5px 7px #35243830)}.sticker-widget .sticker-card{min-height:96px;justify-content:center;cursor:pointer}.sticker-widget .sticker-card:focus-visible{outline:2px solid #a36c91;outline-offset:4px;border-radius:8px}.sticker-widget .sticker-choice{display:none;position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:9;width:min(90%,220px);max-width:90%;font-size:10px;box-shadow:0 5px 18px #2d203344}.sticker-widget.sticker-picker-open .sticker-choice{display:block}.sticker-widget.member-cutout-mode{min-width:100px!important;min-height:100px!important;background:transparent!important;border-color:transparent!important;box-shadow:none!important;backdrop-filter:none!important;overflow:visible;border-radius:0}.sticker-widget.member-cutout-mode .workspace-widget-content{height:calc(100% - 32px)!important;display:flex;align-items:center;justify-content:center;background:transparent!important;padding:0!important;overflow:visible}.sticker-widget.member-cutout-mode .sticker-card{width:100%;height:100%;min-height:0;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}.sticker-widget.member-cutout-mode .sticker-member{width:100%;height:100%;max-width:none;object-fit:contain;filter:drop-shadow(0 7px 8px #35243828)}.sticker-widget.member-cutout-mode .workspace-widget-head{opacity:0}.sticker-widget.member-cutout-mode:hover .workspace-widget-head,.sticker-widget.member-cutout-mode:focus-within .workspace-widget-head{opacity:1}.sticker-widget.member-cutout-mode .widget-resize-grip{background:#ffffffb8;border-color:#ffffffd9;opacity:0}.sticker-widget.member-cutout-mode:hover .widget-resize-grip,.sticker-widget.member-cutout-mode:focus-within .widget-resize-grip{opacity:.85}.mini-desk-timer:not(.is-break){background:linear-gradient(145deg,#a95e52,#ce8067)}.mini-desk-timer.is-break{background:linear-gradient(145deg,#49675e,#6e9685)}.mini-desk-timer-row #miniDeskToggle{background:linear-gradient(135deg,#b96052,#d77f65);color:#fff}.mini-desk-timer.is-break #miniDeskToggle{background:linear-gradient(135deg,#608d79,#83ad94);color:#fff}.mini-desk-timer-row #miniDeskSoundToggle{flex:0 0 38px;background:#ffffff20;border:1px solid #ffffff55;color:#fff}.mini-desk-session-tally{padding:6px 16px;border-bottom:1px solid #6e4f5c16;color:#7c6678;font-size:10px;font-weight:700;text-align:center}.mini-desk-task{display:grid;gap:6px;padding:8px 9px}.mini-desk-task-line{display:flex;align-items:center;gap:8px;min-width:0}.mini-desk-task-name{flex:1;min-width:0;overflow:hidden;color:#514453;font-weight:800;text-overflow:ellipsis;white-space:nowrap}.mini-desk-task-start{flex:0 0 27px;width:27px;height:27px;padding:0;border:1px solid #e8d9e5;border-radius:9px;background:#f7eef5;color:#76506c;box-shadow:none}.mini-desk-task-progress{height:4px;overflow:hidden;border-radius:99px;background:#eee8ef}.mini-desk-task-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#b67aa4,#8565b6)}.mini-desk-note-meta{display:flex;justify-content:space-between;gap:8px;margin:5px 2px;color:#938594;font-size:9px}.mini-desk-note-saved{color:#628372;font-weight:700}.mini-desk-links button{display:inline-flex;align-items:center;justify-content:center;gap:5px}.mini-desk-links svg{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}';
   document.head.appendChild(stickerStyles);
+
+  const customStickerStyles = document.createElement('style');
+  customStickerStyles.textContent = '.custom-sticker-dialog{width:min(440px,calc(100vw - 28px));max-height:min(88vh,760px);padding:0;border:1px solid #eadbe5;border-radius:20px;background:#fffafc;color:#443443;box-shadow:0 22px 70px #21142555}.custom-sticker-dialog::backdrop{background:#21142575;backdrop-filter:blur(4px)}.custom-sticker-form{display:grid;gap:14px;padding:18px}.custom-sticker-form header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid #efe4eb}.custom-sticker-form header small{color:#98758b;font-size:9px;letter-spacing:.15em;font-weight:900}.custom-sticker-form h3{margin:4px 0 0;color:#63384f;font:700 23px Georgia,serif}.custom-sticker-close{width:32px;height:32px;padding:0;border-radius:10px;background:#f5eaf0;color:#68465a;font-size:20px}.custom-sticker-form label{display:grid;gap:6px;color:#765a6c;font-size:11px;font-weight:800}.custom-sticker-form input:not([type=file]):not([type=range]),.custom-sticker-form select{width:100%;padding:10px 11px;border:1px solid #e6d4df;border-radius:10px;background:#fff;color:#443443}.custom-sticker-form input[type=file]{width:100%;padding:9px;border:1px dashed #d9c2d1;border-radius:10px;background:#fff;font-size:11px}.custom-sticker-form [data-custom-image-panel]>label>small,.custom-sticker-editor>small{color:#967f8f;font-size:10px;font-weight:400;line-height:1.5}.custom-sticker-editor{display:grid;gap:9px;margin-top:10px}.custom-sticker-editor canvas{display:block;max-width:100%;max-height:300px;width:auto;height:auto;margin:auto;border:1px solid #e5d8e5;border-radius:10px;background-color:#fff;background-image:linear-gradient(45deg,#e9e3ec 25%,transparent 25%),linear-gradient(-45deg,#e9e3ec 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e9e3ec 75%),linear-gradient(-45deg,transparent 75%,#e9e3ec 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0}.custom-sticker-editor p{min-height:16px;margin:0;color:#816d7e;font-size:10px;line-height:1.4}.custom-sticker-tools{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.custom-sticker-tools button{padding:8px 5px;border-radius:9px;background:#f2e7ee;color:#674a5d;font-size:10px}.custom-sticker-tools button:first-child{grid-column:1/-1;background:#773852;color:#fff}.custom-sticker-range{display:grid!important;grid-template-columns:110px 1fr;align-items:center;gap:10px!important}.custom-sticker-range input{width:100%}.custom-sticker-error{min-height:15px;margin:0;color:#a33c52;font-size:11px}.custom-sticker-form footer{display:flex;justify-content:flex-end;gap:8px;padding-top:10px;border-top:1px solid #efe4eb}.custom-sticker-form footer button{padding:9px 13px;border-radius:10px}.custom-sticker-cancel{background:#f2e7ee;color:#68465a}.custom-sticker-save{background:#773852;color:#fff}';
+  document.head.appendChild(customStickerStyles);
 
   const previousMiniDeskMarkup = window.miniDeskMarkup;
   window.miniDeskMarkup = function () {
