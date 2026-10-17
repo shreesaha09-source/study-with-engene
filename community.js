@@ -76,6 +76,7 @@
       <div class="community-tabs" role="tablist" aria-label="Community sections">
         <button type="button" role="tab" aria-selected="true" data-community-tab="gallery">🎨 Fan Art</button>
         <button type="button" role="tab" aria-selected="false" id="communityUpdatesTab" class="community-update-button" data-community-tab="updates" aria-label="Updates"><span>📣 Updates</span><span class="community-update-dot" aria-hidden="true"></span></button>
+        <button type="button" role="tab" aria-selected="false" id="communityReviewTab" data-community-tab="review" class="hidden">🛡️ Review artwork</button>
       </div>
       <div id="communityGallery" class="community-panel">
         <div class="community-intro"><div><h3>Made by the community, for the community</h3><p>Share fan art and cheer others on. Approved artwork stays blurred until you choose to reveal it.</p></div></div>
@@ -83,6 +84,7 @@
         <div id="communityMine" class="community-mine"></div><div id="communityGalleryGrid" class="community-grid" aria-live="polite"></div>
       </div>
       <div id="communityUpdates" class="community-panel hidden"><div class="community-intro"><div><h3>Updates from the creator</h3><p>One place to see announcements and important news.</p></div></div><div id="communityCreatorPost" class="community-creator hidden"></div><div id="communityAnnouncements" class="community-announcements"></div></div>
+      <div id="communityReviewPanel" class="community-panel hidden"><div id="communityReviewQueue"></div></div>
       <div id="communityStatus" class="community-status" role="status" aria-live="polite"></div>`;
     const shell = document.querySelector('.shell');
     const home = el('home');
@@ -91,10 +93,11 @@
     el('communityUploadForm')?.addEventListener('submit', uploadArtwork);
   }
   function setTab(tab) {
-    state.tab = tab === 'updates' ? 'updates' : 'gallery';
+    state.tab = ['updates', 'review'].includes(tab) ? tab : 'gallery';
     document.querySelectorAll('[data-community-tab]').forEach((button) => button.setAttribute('aria-selected', String(button.dataset.communityTab === state.tab)));
     el('communityGallery')?.classList.toggle('hidden', state.tab !== 'gallery');
     el('communityUpdates')?.classList.toggle('hidden', state.tab !== 'updates');
+    el('communityReviewPanel')?.classList.toggle('hidden', state.tab !== 'review');
     if (state.tab === 'updates') { dismissUpdateDot(); loadAnnouncements(true).catch((e) => status(e.message, true)); }
   }
   async function init() {
@@ -149,16 +152,25 @@
   async function checkCreator() {
     const result = await callFunction('creator-list').catch(() => null);
     state.creator = Boolean(result);
+    const reviewTab = el('communityReviewTab');
+    if (reviewTab) reviewTab.classList.toggle('hidden', !state.creator);
     if (!state.creator) return;
     const form = el('communityCreatorPost');
     form.classList.remove('hidden');
-    form.innerHTML = `<h3>Post an update</h3><form id="communityAnnouncementForm"><label>Title<input id="communityAnnouncementTitle" maxlength="120" required></label><label>Message<textarea id="communityAnnouncementBody" rows="4" maxlength="3000" required></textarea></label><button>Publish to everyone</button></form><div id="communityReviewQueue"></div>`;
+    form.innerHTML = `<h3>Post an update</h3><form id="communityAnnouncementForm"><label>Title<input id="communityAnnouncementTitle" maxlength="120" required></label><label>Message<textarea id="communityAnnouncementBody" rows="4" maxlength="3000" required></textarea></label><button>Publish to everyone</button></form>`;
     el('communityAnnouncementForm').addEventListener('submit', publishAnnouncement);
     const { review = [], reports = [] } = result;
-    el('communityReviewQueue').innerHTML = `<h3>Artwork review</h3>${review.length ? review.map((row) => `<article class="community-review-card"><div class="community-review-preview"><img class="is-safety-blurred" src="${escapeHtml(row.image_url)}" alt="Artwork preview hidden until you reveal it"><button type="button" class="community-reveal-button" onclick="communityRevealPreview(this)">Reveal preview</button></div><div><b>${escapeHtml(row.title)}</b><p>by ${escapeHtml(row.creator_name || 'Community artist')}</p><p>${escapeHtml(row.caption || '')}</p><small>Private for creator review · Status: ${escapeHtml(row.moderation_status)} · Reports: ${reports.filter((report) => report.art_id === row.id).length}</small><div><button type="button" onclick="communityModerate('${row.id}','approved')">Approve</button> <button type="button" class="secondary" onclick="communityModerate('${row.id}','rejected')">Remove</button></div></div></article>`).join('') : '<p class="community-small">No artwork is waiting for review.</p>'}`;
+    const reviewQueue = review.filter((row) => row.moderation_status === 'review');
+    const reportCount = (id) => reports.filter((report) => report.art_id === id).length;
+    if (reviewTab) reviewTab.textContent = `🛡️ Review artwork${reviewQueue.length ? ` (${reviewQueue.length})` : ''}`;
+    const queue = el('communityReviewQueue');
+    if (queue) queue.innerHTML = `<div class="community-intro"><div><h3>Artwork review</h3><p>Open each picture, then approve it to publish it on Fan Art or remove it from the board.</p></div></div>${reviewQueue.length ? reviewQueue.map((row) => `<article class="community-review-card"><div class="community-review-preview"><img class="is-safety-blurred" src="${escapeHtml(row.image_url)}" alt="Artwork preview blurred until revealed"><button type="button" class="community-reveal-button" onclick="communityRevealPreview(this)">Reveal picture</button><a class="community-review-open" href="${escapeHtml(row.image_url)}" target="_blank" rel="noopener noreferrer">Open full size ↗</a></div><div class="community-review-details"><h4>${escapeHtml(row.title)}</h4><p>by ${escapeHtml(row.creator_name || 'Community artist')}</p>${row.caption ? `<p>${escapeHtml(row.caption)}</p>` : ''}<small>Waiting for approval${reportCount(row.id) ? ` · Reports: ${reportCount(row.id)}` : ''}</small><div class="community-review-actions"><button type="button" onclick="communityModerate('${row.id}','approved')">Approve and publish</button> <button type="button" class="secondary" onclick="communityModerate('${row.id}','rejected')">Remove artwork</button></div></div></article>`).join('') : '<p class="community-empty">There is no artwork waiting for review right now.</p>'}`;
   }
   async function uploadArtwork(event) {
     event.preventDefault();
+    // currentTarget is only populated while the submit event is being dispatched.
+    // This handler awaits several network operations, so retain the form first.
+    const form = event.currentTarget;
     const file = el('communityFile').files?.[0];
     if (!file) return;
     if (!['image/png', 'image/jpeg'].includes(file.type)) { status('Choose a PNG or JPEG image.', true); return; }
@@ -176,7 +188,7 @@
       if (error) throw error;
       const result = await callFunction('moderate-upload', { id });
       status(result.message || 'Upload complete.');
-      event.currentTarget.reset();
+      form.reset();
       await loadGallery();
       await checkCreator();
     } catch (error) { status(error.message, true); }
@@ -259,3 +271,4 @@
     window.setInterval(() => { if (state.session && document.visibilityState === 'visible') loadAnnouncements(false).catch(() => {}); }, 60000);
   });
 })();
+
