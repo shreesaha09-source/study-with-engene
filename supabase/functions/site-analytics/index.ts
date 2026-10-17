@@ -29,6 +29,11 @@ Deno.serve(async (request) => {
       return respond({ error: 'Analytics event is invalid.' }, 400);
     }
     const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
+    const recentCutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count, error: countError } = await admin.from('site_analytics_events')
+      .select('id', { count: 'exact', head: true }).eq('session_id', sessionId).gte('occurred_at', recentCutoff);
+    if (countError) throw countError;
+    if ((count || 0) >= 120) return respond({ error: 'This analytics session reached its hourly event limit.' }, 429);
     const { error } = await admin.from('site_analytics_events').insert({
       session_id: sessionId,
       event_type: eventType,
