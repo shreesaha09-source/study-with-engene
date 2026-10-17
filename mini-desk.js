@@ -5,6 +5,57 @@
   const TASK_PROGRESS_KEY = 'esc_mini_desk_task_progress_v1';
   const SESSION_COUNT_KEY = 'esc_mini_desk_session_count_v1';
   const DAILY_SESSION_GOAL = 5;
+  const STICKER_ASSET_DB = 'studyverse_custom_sticker_assets_v1';
+  let stickerAssetDbPromise = null;
+  const stickerAssetUrls = new Map();
+
+  function openStickerAssetDb() {
+    if (!window.indexedDB) return Promise.reject(new Error('Image storage is unavailable in this browser.'));
+    if (!stickerAssetDbPromise) stickerAssetDbPromise = new Promise((resolve, reject) => {
+      const request = indexedDB.open(STICKER_ASSET_DB, 1);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains('assets')) request.result.createObjectStore('assets');
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error('Could not open image storage.'));
+      request.onblocked = () => reject(new Error('Image storage is busy. Close other Studyverse tabs and try again.'));
+    });
+    return stickerAssetDbPromise;
+  }
+
+  function saveStickerAsset(id, blob) {
+    return openStickerAssetDb().then(db => new Promise((resolve, reject) => {
+      const transaction = db.transaction('assets', 'readwrite');
+      transaction.objectStore('assets').put(blob, id);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error || new Error('Could not save this image.'));
+      transaction.onabort = () => reject(transaction.error || new Error('Could not save this image.'));
+    }));
+  }
+
+  function getStickerAsset(id) {
+    return openStickerAssetDb().then(db => new Promise((resolve, reject) => {
+      const transaction = db.transaction('assets', 'readonly');
+      const request = transaction.objectStore('assets').get(id);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error || new Error('Could not load this sticker image.'));
+    }));
+  }
+
+  function hydrateStickerAssetImages() {
+    document.querySelectorAll('.sticker-member[data-sticker-asset]').forEach(image => {
+      const id = image.dataset.stickerAsset;
+      if (!id) return;
+      const cachedUrl = stickerAssetUrls.get(id);
+      if (cachedUrl) { if (image.getAttribute('src') !== cachedUrl) image.src = cachedUrl; return; }
+      getStickerAsset(id).then(blob => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        stickerAssetUrls.set(id, url);
+        if (image.isConnected && image.dataset.stickerAsset === id) image.src = url;
+      }).catch(error => console.warn('Could not load custom sticker image.', error));
+    });
+  }
 
   function taskProgressMap() {
     const saved = loadJSON(TASK_PROGRESS_KEY, {});
@@ -122,6 +173,7 @@
         widget.stickerMember = members.includes(savedSticker.stickerMember) ? savedSticker.stickerMember : settings.member;
         widget.stickerCustomText = String(savedSticker.stickerCustomText || '').slice(0, 120);
         widget.stickerCustomImage = typeof savedSticker.stickerCustomImage === 'string' && /^data:image\/(?:png|jpeg);base64,/.test(savedSticker.stickerCustomImage) ? savedSticker.stickerCustomImage : '';
+        widget.stickerCustomImageId = typeof savedSticker.stickerCustomImageId === 'string' ? savedSticker.stickerCustomImageId : '';
         widget.stickerCustomActive = ['text', 'image'].includes(savedSticker.stickerCustomActive) ? savedSticker.stickerCustomActive : '';
       }
     });
@@ -140,20 +192,30 @@
     const markup = previousWorkspaceWidgetMarkup.call(this, widget);
     if (widget.type !== 'sticker') return markup;
     const customImage = typeof widget.stickerCustomImage === 'string' && /^data:image\/(?:png|jpeg);base64,/.test(widget.stickerCustomImage) ? widget.stickerCustomImage : '';
+    const customImageId = typeof widget.stickerCustomImageId === 'string' ? widget.stickerCustomImageId : '';
     const customText = String(widget.stickerCustomText || '').trim();
+    const hasCustomImage = Boolean(customImage || customImageId);
     const visibleCustomImage = widget.stickerCustomActive === 'image' ? customImage : '';
-    const selected = widget.stickerCustomActive === 'image' && customImage ? 'custom:image' : (widget.stickerCustomActive === 'text' && customText ? 'custom:text' : (widget.stickerImage
+    const visibleCustomImageId = widget.stickerCustomActive === 'image' ? customImageId : '';
+    const selected = widget.stickerCustomActive === 'image' && hasCustomImage ? 'custom:image' : (widget.stickerCustomActive === 'text' && customText ? 'custom:text' : (widget.stickerImage
       ? 'member:' + (members.includes(widget.stickerMember) ? widget.stickerMember : settings.member)
       : 'text:' + Math.max(0, STUDY_STICKER_QUOTES.indexOf(widget.stickerText || STUDY_STICKER_QUOTES[0]))));
     const stickerBody = widget.stickerImage
-      ? '<img class="sticker-member" src="' + esc(visibleCustomImage || memberImages[widget.stickerMember] || memberImages[settings.member]) + '" alt="' + esc(visibleCustomImage ? 'Your custom sticker' : memberDisplay(widget.stickerMember) + ' character sticker') + '">'
+      ? '<img class="sticker-member"' + (visibleCustomImageId ? ' data-sticker-asset="' + esc(visibleCustomImageId) + '"' : '') + ' src="' + esc(visibleCustomImage || (visibleCustomImageId ? '' : memberImages[widget.stickerMember] || memberImages[settings.member])) + '" alt="' + esc(hasCustomImage && widget.stickerCustomActive === 'image' ? 'Your custom sticker' : memberDisplay(widget.stickerMember) + ' character sticker') + '">'
       : '<span class="sticker-emoji">' + esc(widget.sticker || '✦') + '</span><span class="sticker-quote">' + esc(widget.stickerCustomActive === 'text' ? customText : (widget.stickerText || STUDY_STICKER_QUOTES[0])) + '</span>';
-    const customOptions = (customText ? '<option value="custom:text" ' + (selected === 'custom:text' ? 'selected' : '') + '>My text sticker</option>' : '') + (customImage ? '<option value="custom:image" ' + (selected === 'custom:image' ? 'selected' : '') + '>My image sticker</option>' : '') + '<option value="create:new">Create a sticker…</option>';
+    const customOptions = (customText ? '<option value="custom:text" ' + (selected === 'custom:text' ? 'selected' : '') + '>My text sticker</option>' : '') + (hasCustomImage ? '<option value="custom:image" ' + (selected === 'custom:image' ? 'selected' : '') + '>My image sticker</option>' : '') + '<option value="create:new">Create a sticker…</option>';
     const stickerChoices = '<div class="workspace-widget-content"><div class="sticker-card" data-sticker-body role="button" tabindex="0" aria-label="Click to choose a different sticker">' + stickerBody + '</div><select class="sticker-choice" data-sticker-choice aria-label="Choose a study sticker"><optgroup label="Text stickers">' + STUDY_STICKER_QUOTES.map((quote, index) => '<option value="text:' + index + '" ' + (selected === 'text:' + index ? 'selected' : '') + '>' + esc(quote) + '</option>').join('') + '</optgroup><optgroup label="Character cutouts">' + members.map(member => '<option value="member:' + esc(member) + '" ' + (selected === 'member:' + member ? 'selected' : '') + '>' + esc(memberDisplay(member)) + '</option>').join('') + '</optgroup>' + (customText || customImage ? '<optgroup label="Your stickers">' + customOptions + '</optgroup>' : '<optgroup label="Create">' + customOptions + '</optgroup>') + '</select></div>';
     const stickerMarkup = markup.replace(/<div class="workspace-widget-content"><div class="sticker-card">[\s\S]*?<\/select><\/div>/, stickerChoices);
     return widget.stickerImage
       ? stickerMarkup.replace('class="workspace-widget ', 'class="workspace-widget member-cutout-mode ')
       : stickerMarkup;
+  };
+
+  const previousRenderWorkspace = window.renderWorkspace;
+  window.renderWorkspace = function (...args) {
+    const result = previousRenderWorkspace.apply(this, args);
+    hydrateStickerAssetImages();
+    return result;
   };
 
   document.addEventListener('change', event => {
@@ -164,7 +226,7 @@
     if (!widget) return;
     const [kind, value] = picker.value.split(':');
     if (kind === 'create') {
-      picker.value = widget.stickerCustomActive === 'image' && widget.stickerCustomImage ? 'custom:image' : (widget.stickerCustomActive === 'text' && widget.stickerCustomText ? 'custom:text' : (widget.stickerImage ? 'member:' + (members.includes(widget.stickerMember) ? widget.stickerMember : settings.member) : 'text:' + Math.max(0, STUDY_STICKER_QUOTES.indexOf(widget.stickerText || STUDY_STICKER_QUOTES[0]))));
+      picker.value = widget.stickerCustomActive === 'image' && (widget.stickerCustomImage || widget.stickerCustomImageId) ? 'custom:image' : (widget.stickerCustomActive === 'text' && widget.stickerCustomText ? 'custom:text' : (widget.stickerImage ? 'member:' + (members.includes(widget.stickerMember) ? widget.stickerMember : settings.member) : 'text:' + Math.max(0, STUDY_STICKER_QUOTES.indexOf(widget.stickerText || STUDY_STICKER_QUOTES[0]))));
       openStickerCreator(widget.id);
       return;
     }
@@ -172,7 +234,7 @@
       widget.stickerImage = false;
       widget.stickerText = '';
       widget.stickerCustomActive = 'text';
-    } else if (kind === 'custom' && value === 'image' && widget.stickerCustomImage) {
+    } else if (kind === 'custom' && value === 'image' && (widget.stickerCustomImage || widget.stickerCustomImageId)) {
       widget.stickerImage = true;
       widget.stickerCustomActive = 'image';
     } else if (kind === 'member' && members.includes(value)) {
@@ -195,7 +257,7 @@
       dialog = document.createElement('dialog');
       dialog.id = 'customStickerDialog';
       dialog.className = 'custom-sticker-dialog';
-      dialog.innerHTML = '<form class="custom-sticker-form"><header><div><small>YOUR DESK, YOUR STYLE</small><h3>Create a sticker</h3></div><button type="button" class="custom-sticker-close" data-sticker-close aria-label="Close">×</button></header><label class="custom-sticker-kind">Sticker type<select data-custom-sticker-kind><option value="text">Custom text</option><option value="image">Upload an image</option></select></label><label class="custom-sticker-field" data-custom-text-panel>Sticker text<input data-custom-sticker-text maxlength="120" placeholder="Write a tiny reminder or phrase"></label><section class="custom-sticker-field" data-custom-image-panel hidden><label>Choose a PNG or JPEG image<input data-custom-sticker-file type="file" accept="image/png,image/jpeg"></label><div class="custom-sticker-editor" data-custom-sticker-editor hidden><canvas data-sticker-canvas></canvas><p data-sticker-editor-status>Pick a background color to remove, or erase it by hand.</p><div class="custom-sticker-tools"><button type="button" data-pick-background>Pick &amp; remove color</button><button type="button" data-erase-mode>Erase</button><button type="button" data-restore-mode>Restore</button></div><label class="custom-sticker-range">Color tolerance <input data-background-tolerance type="range" min="12" max="120" value="48"></label><label class="custom-sticker-range">Brush size <input data-eraser-size type="range" min="4" max="60" value="24"></label><small>Color removal works best on plain backgrounds. Erase and restore refine the edges.</small></div></section><p class="custom-sticker-error" data-custom-sticker-error role="status"></p><footer><button type="button" class="custom-sticker-cancel" data-sticker-close>Cancel</button><button type="submit" class="custom-sticker-save">Add sticker</button></footer></form>';
+      dialog.innerHTML = '<form class="custom-sticker-form"><header><div><small>YOUR DESK, YOUR STYLE</small><h3>Create a sticker</h3></div><button type="button" class="custom-sticker-close" data-sticker-close aria-label="Close">×</button></header><label class="custom-sticker-kind">Sticker type<select data-custom-sticker-kind><option value="text">Custom text</option><option value="image">Upload an image</option></select></label><label class="custom-sticker-field" data-custom-text-panel>Sticker text<input data-custom-sticker-text maxlength="120" placeholder="Write a tiny reminder or phrase"></label><section class="custom-sticker-field" data-custom-image-panel hidden><label>Choose a PNG or JPEG image<input data-custom-sticker-file type="file" accept="image/png,image/jpeg"></label><small>No file-size limit. Browser storage and memory still apply.</small><div class="custom-sticker-editor" data-custom-sticker-editor hidden><canvas data-sticker-canvas></canvas><p data-sticker-editor-status>Pick a background color to remove, or erase it by hand.</p><div class="custom-sticker-tools"><button type="button" data-pick-background>Pick &amp; remove color</button><button type="button" data-erase-mode>Erase</button><button type="button" data-restore-mode>Restore</button></div><label class="custom-sticker-range">Color tolerance <input data-background-tolerance type="range" min="12" max="120" value="48"></label><label class="custom-sticker-range">Brush size <input data-eraser-size type="range" min="4" max="60" value="24"></label><small>Color removal works best on plain backgrounds. Erase and restore refine the edges.</small></div></section><p class="custom-sticker-error" data-custom-sticker-error role="status"></p><footer><button type="button" class="custom-sticker-cancel" data-sticker-close>Cancel</button><button type="submit" class="custom-sticker-save">Add sticker</button></footer></form>';
       document.body.appendChild(dialog);
       const editor = dialog.__stickerEditor = { original: null, sample: null, mode: 'preview', painting: false };
       const kindPicker = dialog.querySelector('[data-custom-sticker-kind]');
@@ -211,28 +273,24 @@
       const fileInput = dialog.querySelector('[data-custom-sticker-file]');
       const fileToCanvas = file => {
         if (!file || !['image/png', 'image/jpeg'].includes(file.type)) { dialog.querySelector('[data-custom-sticker-error]').textContent = 'Choose a PNG or JPEG image.'; return; }
-        if (file.size > 512 * 1024) { dialog.querySelector('[data-custom-sticker-error]').textContent = 'That image is over 512 KB. Please choose a smaller file.'; return; }
-        const reader = new FileReader();
-        reader.onerror = () => { dialog.querySelector('[data-custom-sticker-error]').textContent = 'The image could not be read. Please choose it again.'; };
-        reader.onload = () => {
-          const image = new Image();
-          image.onerror = () => { dialog.querySelector('[data-custom-sticker-error]').textContent = 'That image could not be opened.'; };
-          image.onload = () => {
-            const scale = Math.min(1, 480 / Math.max(image.naturalWidth, image.naturalHeight));
-            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            context.drawImage(image, 0, 0, canvas.width, canvas.height);
-            editor.original = context.getImageData(0, 0, canvas.width, canvas.height);
-            editor.sample = null;
-            editor.mode = 'preview';
-            dialog.querySelector('[data-custom-sticker-editor]').hidden = false;
-            dialog.querySelector('[data-custom-sticker-error]').textContent = '';
-            status.textContent = 'Pick a background color to remove, or erase it by hand.';
-          };
-          image.src = String(reader.result);
+        const imageUrl = URL.createObjectURL(file);
+        const image = new Image();
+        image.onerror = () => { URL.revokeObjectURL(imageUrl); dialog.querySelector('[data-custom-sticker-error]').textContent = 'That image could not be opened.'; };
+        image.onload = () => {
+          URL.revokeObjectURL(imageUrl);
+          const scale = Math.min(1, 480 / Math.max(image.naturalWidth, image.naturalHeight));
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          editor.original = context.getImageData(0, 0, canvas.width, canvas.height);
+          editor.sample = null;
+          editor.mode = 'preview';
+          dialog.querySelector('[data-custom-sticker-editor]').hidden = false;
+          dialog.querySelector('[data-custom-sticker-error]').textContent = '';
+          status.textContent = 'Pick a background color to remove, or erase it by hand.';
         };
-        reader.readAsDataURL(file);
+        image.src = imageUrl;
       };
       fileInput.addEventListener('change', () => fileToCanvas(fileInput.files?.[0]));
       dialog.querySelector('[data-pick-background]').addEventListener('click', () => {
@@ -333,14 +391,29 @@
           return;
         }
         if (!editor.original) { error.textContent = 'Choose an image before adding this sticker.'; return; }
-        const dataUrl = canvas.toDataURL('image/png');
-        if (dataUrl.length > 700 * 1024) { error.textContent = 'This cutout is too large to save here. Choose a smaller image.'; return; }
-        target.stickerImage = true;
-        target.stickerCustomImage = dataUrl;
-        target.stickerCustomActive = 'image';
-        saveWorkspace();
-        renderWorkspace();
-        dialog.close();
+        const saveButton = dialog.querySelector('.custom-sticker-save');
+        saveButton.disabled = true;
+        error.textContent = 'Saving your sticker…';
+        canvas.toBlob(blob => {
+          if (!blob) {
+            saveButton.disabled = false;
+            error.textContent = 'The edited image could not be prepared. Try choosing it again.';
+            return;
+          }
+          const assetId = window.crypto?.randomUUID?.() || ('sticker-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+          saveStickerAsset(assetId, blob).then(() => {
+            target.stickerImage = true;
+            target.stickerCustomImage = '';
+            target.stickerCustomImageId = assetId;
+            target.stickerCustomActive = 'image';
+            saveWorkspace();
+            renderWorkspace();
+            dialog.close();
+          }).catch(storageError => {
+            error.textContent = storageError?.name === 'QuotaExceededError' ? 'Your browser is out of storage space. Free some browser storage and try again.' : (storageError?.message || 'The image could not be saved in this browser.');
+            saveButton.disabled = false;
+          });
+        }, 'image/png');
       });
     }
     dialog.dataset.widgetId = String(widgetId);
