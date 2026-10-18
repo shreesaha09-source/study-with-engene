@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const state = { client: null, session: null, creator: false, tab: 'gallery', loading: false, pulseStop: null, pulseInterval: null, updatePulseInitialized: false, galleryRows: [], analyticsPage: '', analyticsEnteredAt: 0, analyticsSessionId: '', analyticsSource: '' };
+  const state = { client: null, session: null, creator: false, tab: 'gallery', loading: false, pulseStop: null, pulseInterval: null, updatePulseInitialized: false, galleryRows: [], analyticsPage: '', analyticsEnteredAt: 0, analyticsSessionId: '', analyticsSource: '', analyticsSessionStartedAt: 0, analyticsEngagementSent: false, analyticsEngagementTimer: null };
   const cfg = () => window.ENGENE_STUDY_AI_CONFIG || {};
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
   const el = (id) => document.getElementById(id);
@@ -62,6 +62,16 @@
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || 'The Community Board service could not finish that.');
+    return result;
+  }
+  async function callCreatorAnalytics() {
+    const session = await currentSession();
+    const c = cfg();
+    const response = await fetch(`${String(c.supabaseUrl).replace(/\/$/, '')}/functions/v1/creator-analytics`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', apikey: c.supabaseAnonKey, Authorization: `Bearer ${session.access_token}` }, body: '{}',
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Creator analytics could not be loaded.');
     return result;
   }
   function install() {
@@ -180,16 +190,21 @@
     const panel = el('communityAnalyticsPanel');
     if (!panel || !state.creator) return;
     panel.innerHTML = '<div class="community-empty">Loading your site reach…</div>';
-    const data = await callFunction('creator-analytics');
+    const data = await callCreatorAnalytics();
     const { data: allTimeVisitCount, error: allTimeVisitError } = await client().rpc('get_public_visit_count');
-    const allTimeVisits = allTimeVisitError ? 'Unavailable' : Number(allTimeVisitCount) || 0;
+    const allTimeVisits = allTimeVisitError ? Number(data.all_time_visits) || 0 : Number(allTimeVisitCount) || 0;
     const duration = Number(data.average_session_seconds) || 0;
     const durationLabel = duration >= 60 ? `${Math.floor(duration / 60)}m ${duration % 60}s` : `${duration}s`;
     const maxViews = Math.max(1, ...(data.series || []).map((point) => Number(point.views) || 0));
-    const chart = (data.series || []).map((point) => `<div class="creator-analytics-bar" title="${escapeHtml(point.date)}: ${point.visitors} visitors, ${point.views} page views"><span style="height:${Math.max(point.views ? 8 : 2, Math.round((point.views / maxViews) * 100))}%"></span></div>`).join('');
+    const chart = (data.series || []).map((point) => `<div class="creator-analytics-bar" title="${escapeHtml(point.date)}: ${point.visitors} browsers, ${point.views} visits"><span style="height:${Math.max(point.views ? 8 : 2, Math.round((point.views / maxViews) * 100))}%"></span></div>`).join('');
     const sources = (data.sources || []).length ? data.sources.map((item) => `<li><span>${escapeHtml(item.source)}</span><b>${Number(item.visitors) || 0}</b></li>`).join('') : '<li><span>No visits recorded yet</span><b>0</b></li>';
-    const pages = (data.pages || []).length ? data.pages.map((item) => `<li><span>${escapeHtml(item.page)}</span><b>${Number(item.views) || 0}</b></li>`).join('') : '<li><span>No page views recorded yet</span><b>0</b></li>';
-    panel.innerHTML = `<div class="community-intro"><div><h3>Your site reach</h3><p>Anonymous first-party activity from the last ${Number(data.period_days) || 30} days.</p></div><button type="button" class="ghost" onclick="communityRefreshAnalytics()">Refresh</button></div><div class="creator-analytics-metrics"><article><span>All-time visits</span><strong>${allTimeVisits}</strong></article><article><span>Tracked visitors · 30 days</span><strong>${Number(data.visitors) || 0}</strong></article><article><span>Page views · 30 days</span><strong>${Number(data.page_views) || 0}</strong></article><article><span>Engagement rate</span><strong>${Number(data.engagement_rate) || 0}%</strong></article><article><span>Bounce rate</span><strong>${Number(data.bounce_rate) || 0}%</strong></article><article><span>Average session</span><strong>${durationLabel}</strong></article></div><section class="creator-analytics-chart"><h4>Daily page views · last 30 days</h4><div class="creator-analytics-bars">${chart}</div><div class="creator-analytics-axis"><span>${escapeHtml(data.series?.[0]?.date || '')}</span><span>Today</span></div></section><div class="creator-analytics-lists"><section><h4>Traffic sources</h4><ul>${sources}</ul></section><section><h4>Popular pages</h4><ul>${pages}</ul></section></div><p class="community-analytics-note">All-time visits use your existing visit counter. Engagement, page views, traffic sources, and session duration include activity recorded by the new analytics tracker during the last 30 days.</p>`;
+    const pages = (data.pages || []).length ? data.pages.map((item) => `<li><span>${escapeHtml(item.page)}</span><b>${Number(item.views) || 0}</b></li>`).join('') : '<li><span>Page details begin with the fixed tracker</span><b>—</b></li>';
+    const detailedDataReady = Number(data.recorded_sessions) > 0;
+    const pageViewsValue = detailedDataReady ? Number(data.page_views) || 0 : 'Collecting';
+    const engagementValue = data.engagement_rate == null ? 'Collecting' : `${Number(data.engagement_rate) || 0}%`;
+    const bounceValue = data.bounce_rate == null ? 'Collecting' : `${Number(data.bounce_rate) || 0}%`;
+    const averageValue = data.average_session_seconds == null ? 'Collecting' : durationLabel;
+    panel.innerHTML = `<div class="community-intro"><div><h3>Your site reach</h3><p>Anonymous activity from your existing visit counter and detailed tracking for the last ${Number(data.period_days) || 30} days.</p></div><button type="button" class="ghost" onclick="communityRefreshAnalytics()">Refresh</button></div><div class="creator-analytics-metrics"><article><span>All-time visits</span><strong>${allTimeVisits}</strong></article><article><span>Unique browsers · 30 days</span><strong>${Number(data.visitors) || 0}</strong></article><article><span>Page views · 30 days</span><strong>${pageViewsValue}</strong></article><article><span>Engagement rate</span><strong>${engagementValue}</strong></article><article><span>Bounce rate</span><strong>${bounceValue}</strong></article><article><span>Average session</span><strong>${averageValue}</strong></article></div><section class="creator-analytics-chart"><h4>${escapeHtml(data.chart_title || 'Daily visits · last 30 days')}</h4><div class="creator-analytics-bars">${chart}</div><div class="creator-analytics-axis"><span>${escapeHtml(data.series?.[0]?.date || '')}</span><span>Today</span></div></section><div class="creator-analytics-lists"><section><h4>Traffic sources</h4><ul>${sources}</ul></section><section><h4>Popular pages</h4><ul>${pages}</ul></section></div><p class="community-analytics-note">Visit counts and source labels use your older anonymous counter. Detailed page views, engagement, bounce rate, and session duration are recorded by the fixed tracker from now on. Older visits did not contain enough information to calculate those details, and registered accounts are not linked to anonymous browser visits.</p>`;
   }
   function sendAnalyticsEvent(eventType, page, durationSeconds = 0) {
     const c = cfg();
@@ -206,6 +221,9 @@
       try {
         state.analyticsSessionId = sessionStorage.getItem('engene-site-analytics-session') || crypto.randomUUID();
         sessionStorage.setItem('engene-site-analytics-session', state.analyticsSessionId);
+        state.analyticsSessionStartedAt = Number(sessionStorage.getItem('engene-site-analytics-started-at')) || Date.now();
+        sessionStorage.setItem('engene-site-analytics-started-at', String(state.analyticsSessionStartedAt));
+        state.analyticsEngagementSent = sessionStorage.getItem('engene-site-analytics-engaged') === 'true';
         state.analyticsSource = sessionStorage.getItem('engene-site-analytics-source') || '';
         if (!state.analyticsSource) {
           const referrer = document.referrer ? new URL(document.referrer) : null;
@@ -219,6 +237,20 @@
     state.analyticsPage = nextPage;
     state.analyticsEnteredAt = Date.now();
     sendAnalyticsEvent('page_view', nextPage);
+    if (!state.analyticsEngagementSent) {
+      const markEngaged = () => {
+        if (state.analyticsEngagementSent || !state.analyticsPage) return;
+        state.analyticsEngagementSent = true;
+        sessionStorage.setItem('engene-site-analytics-engaged', 'true');
+        sendAnalyticsEvent('engagement', state.analyticsPage);
+      };
+      const elapsed = Date.now() - state.analyticsSessionStartedAt;
+      if (elapsed >= 10_000) markEngaged();
+      else {
+        clearTimeout(state.analyticsEngagementTimer);
+        state.analyticsEngagementTimer = window.setTimeout(markEngaged, 10_000 - elapsed);
+      }
+    }
   }
   async function uploadArtwork(event) {
     event.preventDefault();
