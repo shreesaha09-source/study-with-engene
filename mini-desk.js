@@ -7,6 +7,7 @@
   const DAILY_SESSION_GOAL = 5;
   const STICKER_ASSET_DB = 'studyverse_custom_sticker_assets_v1';
   const CUSTOM_STICKERS_KEY = 'studyverse_custom_stickers_v1';
+  const STICKER_SELECTIONS_KEY = 'studyverse_workspace_sticker_selections_v1';
   let stickerAssetDbPromise = null;
   const stickerAssetUrls = new Map();
 
@@ -19,6 +20,22 @@
     const stickers = customStickerLibrary();
     stickers.push(sticker);
     if (!safeLocalSet(CUSTOM_STICKERS_KEY, JSON.stringify(stickers))) throw new Error('The custom sticker could not be saved. Free some browser storage and try again.');
+  }
+
+  function saveStickerSelection(widget) {
+    if (!widget || widget.type !== 'sticker') return;
+    const selections = loadJSON(STICKER_SELECTIONS_KEY, {});
+    selections[widget.id] = {
+      sticker: String(widget.sticker || '✦'),
+      stickerText: String(widget.stickerText || '').slice(0, 120),
+      stickerImage: Boolean(widget.stickerImage),
+      stickerMember: members.includes(widget.stickerMember) ? widget.stickerMember : settings.member,
+      stickerCustomText: String(widget.stickerCustomText || '').slice(0, 120),
+      stickerCustomImageId: String(widget.stickerCustomImageId || ''),
+      stickerCustomActive: ['text', 'image'].includes(widget.stickerCustomActive) ? widget.stickerCustomActive : '',
+      stickerCustomStickerId: String(widget.stickerCustomStickerId || '')
+    };
+    safeLocalSet(STICKER_SELECTIONS_KEY, JSON.stringify(selections));
   }
 
   function openStickerAssetDb() {
@@ -178,6 +195,7 @@
   window.loadWorkspace = function (...args) {
     const savedWorkspace = loadJSON(WORKSPACE_KEY, {});
     const savedStickerWidgets = new Map((savedWorkspace.widgets || []).filter(widget => widget?.type === 'sticker').map(widget => [String(widget.id), widget]));
+    const stickerSelections = loadJSON(STICKER_SELECTIONS_KEY, {});
     const result = previousLoadWorkspace.apply(this, args);
     const customStickers = customStickerLibrary();
     let stickerLibraryChanged = false;
@@ -185,12 +203,15 @@
     workspaceModel.widgets.forEach(widget => {
       if (widget.type === 'sticker') {
         const savedSticker = savedStickerWidgets.get(String(widget.id)) || {};
-        widget.stickerMember = members.includes(savedSticker.stickerMember) ? savedSticker.stickerMember : settings.member;
-        widget.stickerCustomText = String(savedSticker.stickerCustomText || '').slice(0, 120);
-        widget.stickerCustomImage = typeof savedSticker.stickerCustomImage === 'string' && /^data:image\/(?:png|jpeg);base64,/.test(savedSticker.stickerCustomImage) ? savedSticker.stickerCustomImage : '';
-        widget.stickerCustomImageId = typeof savedSticker.stickerCustomImageId === 'string' ? savedSticker.stickerCustomImageId : '';
-        widget.stickerCustomActive = ['text', 'image'].includes(savedSticker.stickerCustomActive) ? savedSticker.stickerCustomActive : '';
-        widget.stickerCustomStickerId = typeof savedSticker.stickerCustomStickerId === 'string' ? savedSticker.stickerCustomStickerId : '';
+        const selection = stickerSelections[String(widget.id)];
+        if (selection && typeof selection === 'object') Object.assign(widget, selection);
+        const chosenSticker = selection && typeof selection === 'object' ? selection : savedSticker;
+        widget.stickerMember = members.includes(chosenSticker.stickerMember) ? chosenSticker.stickerMember : settings.member;
+        widget.stickerCustomText = String(chosenSticker.stickerCustomText || '').slice(0, 120);
+        widget.stickerCustomImage = typeof chosenSticker.stickerCustomImage === 'string' && /^data:image\/(?:png|jpeg);base64,/.test(chosenSticker.stickerCustomImage) ? chosenSticker.stickerCustomImage : '';
+        widget.stickerCustomImageId = typeof chosenSticker.stickerCustomImageId === 'string' ? chosenSticker.stickerCustomImageId : '';
+        widget.stickerCustomActive = ['text', 'image'].includes(chosenSticker.stickerCustomActive) ? chosenSticker.stickerCustomActive : '';
+        widget.stickerCustomStickerId = typeof chosenSticker.stickerCustomStickerId === 'string' ? chosenSticker.stickerCustomStickerId : '';
         if (widget.stickerCustomActive === 'text' && widget.stickerCustomText) {
           let savedTextSticker = customStickers.find(sticker => sticker.id === widget.stickerCustomStickerId && sticker.type === 'text') || customStickers.find(sticker => sticker.type === 'text' && sticker.text === widget.stickerCustomText);
           if (!savedTextSticker) {
@@ -208,6 +229,8 @@
           }
           if (widget.stickerCustomStickerId !== savedImageSticker.id) { widget.stickerCustomStickerId = savedImageSticker.id; workspaceStickerChanged = true; }
         }
+        if (selection && (selection.stickerCustomStickerId !== widget.stickerCustomStickerId || selection.stickerMember !== widget.stickerMember)) workspaceStickerChanged = true;
+        if (!selection) saveStickerSelection(widget);
       }
     });
     if (stickerLibraryChanged) safeLocalSet(CUSTOM_STICKERS_KEY, JSON.stringify(customStickers));
@@ -305,6 +328,7 @@
       widget.stickerCustomActive = '';
     } else return;
     saveWorkspace();
+    saveStickerSelection(widget);
     renderWorkspace();
   });
 
@@ -488,6 +512,7 @@
           target.stickerCustomText = sticker.text;
           target.stickerCustomStickerId = sticker.id;
           target.stickerCustomActive = 'text';
+          saveStickerSelection(target);
           saveWorkspace();
           renderWorkspace();
           dialog.close();
@@ -535,6 +560,7 @@
             target.stickerCustomImageId = assetId;
             target.stickerCustomStickerId = sticker.id;
             target.stickerCustomActive = 'image';
+            saveStickerSelection(target);
             saveWorkspace();
             renderWorkspace();
             dialog.close();
