@@ -6,8 +6,20 @@
   const SESSION_COUNT_KEY = 'esc_mini_desk_session_count_v1';
   const DAILY_SESSION_GOAL = 5;
   const STICKER_ASSET_DB = 'studyverse_custom_sticker_assets_v1';
+  const CUSTOM_STICKERS_KEY = 'studyverse_custom_stickers_v1';
   let stickerAssetDbPromise = null;
   const stickerAssetUrls = new Map();
+
+  function customStickerLibrary() {
+    const stickers = loadJSON(CUSTOM_STICKERS_KEY, []);
+    return Array.isArray(stickers) ? stickers.filter(sticker => sticker && typeof sticker.id === 'string' && ['text', 'image'].includes(sticker.type)) : [];
+  }
+
+  function addCustomSticker(sticker) {
+    const stickers = customStickerLibrary();
+    stickers.push(sticker);
+    if (!safeLocalSet(CUSTOM_STICKERS_KEY, JSON.stringify(stickers))) throw new Error('The custom sticker could not be saved. Free some browser storage and try again.');
+  }
 
   function openStickerAssetDb() {
     if (!window.indexedDB) return Promise.reject(new Error('Image storage is unavailable in this browser.'));
@@ -175,6 +187,7 @@
         widget.stickerCustomImage = typeof savedSticker.stickerCustomImage === 'string' && /^data:image\/(?:png|jpeg);base64,/.test(savedSticker.stickerCustomImage) ? savedSticker.stickerCustomImage : '';
         widget.stickerCustomImageId = typeof savedSticker.stickerCustomImageId === 'string' ? savedSticker.stickerCustomImageId : '';
         widget.stickerCustomActive = ['text', 'image'].includes(savedSticker.stickerCustomActive) ? savedSticker.stickerCustomActive : '';
+        widget.stickerCustomStickerId = typeof savedSticker.stickerCustomStickerId === 'string' ? savedSticker.stickerCustomStickerId : '';
       }
     });
     return result;
@@ -194,17 +207,20 @@
     const customImage = typeof widget.stickerCustomImage === 'string' && /^data:image\/(?:png|jpeg);base64,/.test(widget.stickerCustomImage) ? widget.stickerCustomImage : '';
     const customImageId = typeof widget.stickerCustomImageId === 'string' ? widget.stickerCustomImageId : '';
     const customText = String(widget.stickerCustomText || '').trim();
+    const customStickers = customStickerLibrary();
+    const selectedCustomSticker = customStickers.find(sticker => sticker.id === widget.stickerCustomStickerId);
     const hasCustomImage = Boolean(customImage || customImageId);
     const visibleCustomImage = widget.stickerCustomActive === 'image' ? customImage : '';
     const visibleCustomImageId = widget.stickerCustomActive === 'image' ? customImageId : '';
-    const selected = widget.stickerCustomActive === 'image' && hasCustomImage ? 'custom:image' : (widget.stickerCustomActive === 'text' && customText ? 'custom:text' : (widget.stickerImage
+    const selected = selectedCustomSticker ? 'saved:' + selectedCustomSticker.id : (widget.stickerCustomActive === 'image' && hasCustomImage ? 'custom:image' : (widget.stickerCustomActive === 'text' && customText ? 'custom:text' : (widget.stickerImage
       ? 'member:' + (members.includes(widget.stickerMember) ? widget.stickerMember : settings.member)
-      : 'text:' + Math.max(0, STUDY_STICKER_QUOTES.indexOf(widget.stickerText || STUDY_STICKER_QUOTES[0]))));
+      : 'text:' + Math.max(0, STUDY_STICKER_QUOTES.indexOf(widget.stickerText || STUDY_STICKER_QUOTES[0])))));
     const stickerBody = widget.stickerImage
       ? '<img class="sticker-member"' + (visibleCustomImageId ? ' data-sticker-asset="' + esc(visibleCustomImageId) + '"' : '') + ' src="' + esc(visibleCustomImage || (visibleCustomImageId ? '' : memberImages[widget.stickerMember] || memberImages[settings.member])) + '" alt="' + esc(hasCustomImage && widget.stickerCustomActive === 'image' ? 'Your custom sticker' : memberDisplay(widget.stickerMember) + ' character sticker') + '">'
       : '<span class="sticker-emoji">' + esc(widget.sticker || '✦') + '</span><span class="sticker-quote">' + esc(widget.stickerCustomActive === 'text' ? customText : (widget.stickerText || STUDY_STICKER_QUOTES[0])) + '</span>';
-    const customOptions = (customText ? '<option value="custom:text" ' + (selected === 'custom:text' ? 'selected' : '') + '>My text sticker</option>' : '') + (hasCustomImage ? '<option value="custom:image" ' + (selected === 'custom:image' ? 'selected' : '') + '>My image sticker</option>' : '') + '<option value="create:new">Create a sticker…</option>';
-    const stickerChoices = '<div class="workspace-widget-content"><div class="sticker-card" data-sticker-body role="button" tabindex="0" aria-label="Click to choose a different sticker">' + stickerBody + '</div><select class="sticker-choice" data-sticker-choice aria-label="Choose a study sticker"><optgroup label="Text stickers">' + STUDY_STICKER_QUOTES.map((quote, index) => '<option value="text:' + index + '" ' + (selected === 'text:' + index ? 'selected' : '') + '>' + esc(quote) + '</option>').join('') + '</optgroup><optgroup label="Character cutouts">' + members.map(member => '<option value="member:' + esc(member) + '" ' + (selected === 'member:' + member ? 'selected' : '') + '>' + esc(memberDisplay(member)) + '</option>').join('') + '</optgroup>' + (customText || customImage ? '<optgroup label="Your stickers">' + customOptions + '</optgroup>' : '<optgroup label="Create">' + customOptions + '</optgroup>') + '</select></div>';
+    const customOptions = (customText ? '<option value="custom:text" ' + (selected === 'custom:text' ? 'selected' : '') + '>My text sticker</option>' : '') + (hasCustomImage ? '<option value="custom:image" ' + (selected === 'custom:image' ? 'selected' : '') + '>My image sticker</option>' : '');
+    const savedOptions = customStickers.map(sticker => '<option value="saved:' + esc(sticker.id) + '" ' + (selected === 'saved:' + sticker.id ? 'selected' : '') + '>' + esc(sticker.name || (sticker.type === 'text' ? sticker.text : 'Picture sticker')) + '</option>').join('');
+    const stickerChoices = '<div class="workspace-widget-content"><div class="sticker-card" data-sticker-body role="button" tabindex="0" aria-label="Click to choose a different sticker">' + stickerBody + '</div><select class="sticker-choice" data-sticker-choice aria-label="Choose a study sticker"><optgroup label="Text stickers">' + STUDY_STICKER_QUOTES.map((quote, index) => '<option value="text:' + index + '" ' + (selected === 'text:' + index ? 'selected' : '') + '>' + esc(quote) + '</option>').join('') + '</optgroup><optgroup label="Character cutouts">' + members.map(member => '<option value="member:' + esc(member) + '" ' + (selected === 'member:' + member ? 'selected' : '') + '>' + esc(memberDisplay(member)) + '</option>').join('') + '</optgroup>' + (savedOptions || customText || customImage ? '<optgroup label="Custom stickers">' + savedOptions + (customOptions ? customOptions : '') + '</optgroup>' : '') + '<optgroup label="Create"><option value="create:new">Create a sticker…</option></optgroup></select></div>';
     const stickerMarkup = markup.replace(/<div class="workspace-widget-content"><div class="sticker-card">[\s\S]*?<\/select><\/div>/, stickerChoices);
     return widget.stickerImage
       ? stickerMarkup.replace('class="workspace-widget ', 'class="workspace-widget member-cutout-mode ')
@@ -230,19 +246,37 @@
       openStickerCreator(widget.id);
       return;
     }
-    if (kind === 'custom' && value === 'text' && widget.stickerCustomText) {
+    if (kind === 'saved') {
+      const sticker = customStickerLibrary().find(item => item.id === value);
+      if (!sticker) return;
+      widget.stickerCustomStickerId = sticker.id;
+      widget.stickerCustomActive = sticker.type;
+      if (sticker.type === 'text') {
+        widget.stickerImage = false;
+        widget.stickerText = '';
+        widget.stickerCustomText = sticker.text;
+      } else {
+        widget.stickerImage = true;
+        widget.stickerCustomImage = '';
+        widget.stickerCustomImageId = sticker.assetId;
+      }
+    } else if (kind === 'custom' && value === 'text' && widget.stickerCustomText) {
+      widget.stickerCustomStickerId = '';
       widget.stickerImage = false;
       widget.stickerText = '';
       widget.stickerCustomActive = 'text';
     } else if (kind === 'custom' && value === 'image' && (widget.stickerCustomImage || widget.stickerCustomImageId)) {
+      widget.stickerCustomStickerId = '';
       widget.stickerImage = true;
       widget.stickerCustomActive = 'image';
     } else if (kind === 'member' && members.includes(value)) {
+      widget.stickerCustomStickerId = '';
       widget.stickerImage = true;
       widget.stickerMember = value;
       widget.stickerCustomActive = '';
       widget.stickerText = '';
     } else if (kind === 'text') {
+      widget.stickerCustomStickerId = '';
       widget.stickerImage = false;
       widget.stickerText = STUDY_STICKER_QUOTES[Number(value)] || STUDY_STICKER_QUOTES[0];
       widget.stickerCustomActive = '';
@@ -257,7 +291,7 @@
       dialog = document.createElement('dialog');
       dialog.id = 'customStickerDialog';
       dialog.className = 'custom-sticker-dialog';
-      dialog.innerHTML = '<form class="custom-sticker-form"><header><div><small>YOUR DESK, YOUR STYLE</small><h3>Create a sticker</h3></div><button type="button" class="custom-sticker-close" data-sticker-close aria-label="Close">×</button></header><label class="custom-sticker-kind">Sticker type<select data-custom-sticker-kind><option value="text">Custom text</option><option value="image">Upload an image</option></select></label><label class="custom-sticker-field" data-custom-text-panel>Sticker text<input data-custom-sticker-text maxlength="120" placeholder="Write a tiny reminder or phrase"></label><section class="custom-sticker-field" data-custom-image-panel hidden><label>Choose an image<input data-custom-sticker-file type="file" accept="image/*"></label><small>No file-size limit. Browser storage and memory still apply.</small><div class="custom-sticker-editor" data-custom-sticker-editor hidden><canvas data-sticker-canvas></canvas><p data-sticker-editor-status>Pick a background color to remove, or erase it by hand.</p><div class="custom-sticker-tools"><button type="button" data-pick-background>Pick &amp; remove color</button><button type="button" data-erase-mode>Erase</button><button type="button" data-restore-mode>Restore</button></div><label class="custom-sticker-range">Color tolerance <input data-background-tolerance type="range" min="12" max="120" value="48"></label><label class="custom-sticker-range">Brush size <input data-eraser-size type="range" min="4" max="60" value="24"></label><small>Color removal works best on plain backgrounds. Erase and restore refine the edges.</small></div></section><p class="custom-sticker-error" data-custom-sticker-error role="status"></p><footer><button type="button" class="custom-sticker-cancel" data-sticker-close>Cancel</button><button type="submit" class="custom-sticker-save">Add sticker</button></footer></form>';
+      dialog.innerHTML = '<form class="custom-sticker-form"><header><div><small>YOUR DESK, YOUR STYLE</small><h3>Create a sticker</h3></div><button type="button" class="custom-sticker-close" data-sticker-close aria-label="Close">×</button></header><label class="custom-sticker-kind">Sticker type<select data-custom-sticker-kind><option value="text">Custom text</option><option value="image">Upload an image</option></select></label><label class="custom-sticker-field">Sticker name <span>(optional)</span><input data-custom-sticker-name maxlength="40" placeholder="Give it a name"></label><label class="custom-sticker-field" data-custom-text-panel>Sticker text<input data-custom-sticker-text maxlength="120" placeholder="Write a tiny reminder or phrase"></label><section class="custom-sticker-field" data-custom-image-panel hidden><label>Choose an image<input data-custom-sticker-file type="file" accept="image/*"></label><small>No file-size limit. Browser storage and memory still apply.</small><div class="custom-sticker-editor" data-custom-sticker-editor hidden><canvas data-sticker-canvas></canvas><p data-sticker-editor-status>Pick a background color to remove, or erase it by hand.</p><div class="custom-sticker-tools"><button type="button" data-pick-background>Pick &amp; remove color</button><button type="button" data-erase-mode>Erase</button><button type="button" data-restore-mode>Restore</button></div><label class="custom-sticker-range">Color tolerance <input data-background-tolerance type="range" min="12" max="120" value="48"></label><label class="custom-sticker-range">Brush size <input data-eraser-size type="range" min="4" max="60" value="24"></label><small>Color removal works best on plain backgrounds. Erase and restore refine the edges.</small></div></section><p class="custom-sticker-error" data-custom-sticker-error role="status"></p><footer><button type="button" class="custom-sticker-cancel" data-sticker-close>Cancel</button><button type="submit" class="custom-sticker-save">Add sticker</button></footer></form>';
       document.body.appendChild(dialog);
       const editor = dialog.__stickerEditor = { original: null, sample: null, mode: 'preview', painting: false };
       const kindPicker = dialog.querySelector('[data-custom-sticker-kind]');
@@ -378,12 +412,16 @@
         const target = workspaceModel.widgets.find(item => item.id === dialog.dataset.widgetId && item.type === 'sticker');
         if (!target) { dialog.close(); return; }
         const error = dialog.querySelector('[data-custom-sticker-error]');
+        const customName = dialog.querySelector('[data-custom-sticker-name]').value.trim();
         if (kindPicker.value === 'text') {
           const text = dialog.querySelector('[data-custom-sticker-text]').value.trim();
           if (!text) { error.textContent = 'Type some sticker text first.'; return; }
+          const sticker = { id: window.crypto?.randomUUID?.() || ('sticker-' + Date.now() + '-' + Math.random().toString(36).slice(2)), type: 'text', name: customName || text.slice(0, 40), text: text.slice(0, 120), createdAt: Date.now() };
+          try { addCustomSticker(sticker); } catch (storageError) { error.textContent = storageError.message; return; }
           target.stickerImage = false;
           target.stickerText = '';
-          target.stickerCustomText = text.slice(0, 120);
+          target.stickerCustomText = sticker.text;
+          target.stickerCustomStickerId = sticker.id;
           target.stickerCustomActive = 'text';
           saveWorkspace();
           renderWorkspace();
@@ -402,9 +440,12 @@
           }
           const assetId = window.crypto?.randomUUID?.() || ('sticker-' + Date.now() + '-' + Math.random().toString(36).slice(2));
           saveStickerAsset(assetId, blob).then(() => {
+            const sticker = { id: assetId, type: 'image', name: customName || ('Picture sticker ' + (customStickerLibrary().filter(item => item.type === 'image').length + 1)), assetId, createdAt: Date.now() };
+            addCustomSticker(sticker);
             target.stickerImage = true;
             target.stickerCustomImage = '';
             target.stickerCustomImageId = assetId;
+            target.stickerCustomStickerId = sticker.id;
             target.stickerCustomActive = 'image';
             saveWorkspace();
             renderWorkspace();
