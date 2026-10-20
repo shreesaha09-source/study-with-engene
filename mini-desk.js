@@ -424,6 +424,7 @@
       dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
       dialog.addEventListener('close', () => {
         dialog.querySelector('form').reset();
+        dialog.querySelector('.custom-sticker-save').disabled = false;
         dialog.querySelector('[data-custom-text-panel]').hidden = false;
         dialog.querySelector('[data-custom-image-panel]').hidden = true;
         dialog.querySelector('[data-custom-sticker-editor]').hidden = true;
