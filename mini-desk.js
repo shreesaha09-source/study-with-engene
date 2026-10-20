@@ -179,6 +179,9 @@
     const savedWorkspace = loadJSON(WORKSPACE_KEY, {});
     const savedStickerWidgets = new Map((savedWorkspace.widgets || []).filter(widget => widget?.type === 'sticker').map(widget => [String(widget.id), widget]));
     const result = previousLoadWorkspace.apply(this, args);
+    const customStickers = customStickerLibrary();
+    let stickerLibraryChanged = false;
+    let workspaceStickerChanged = false;
     workspaceModel.widgets.forEach(widget => {
       if (widget.type === 'sticker') {
         const savedSticker = savedStickerWidgets.get(String(widget.id)) || {};
@@ -188,8 +191,27 @@
         widget.stickerCustomImageId = typeof savedSticker.stickerCustomImageId === 'string' ? savedSticker.stickerCustomImageId : '';
         widget.stickerCustomActive = ['text', 'image'].includes(savedSticker.stickerCustomActive) ? savedSticker.stickerCustomActive : '';
         widget.stickerCustomStickerId = typeof savedSticker.stickerCustomStickerId === 'string' ? savedSticker.stickerCustomStickerId : '';
+        if (widget.stickerCustomActive === 'text' && widget.stickerCustomText) {
+          let savedTextSticker = customStickers.find(sticker => sticker.id === widget.stickerCustomStickerId && sticker.type === 'text') || customStickers.find(sticker => sticker.type === 'text' && sticker.text === widget.stickerCustomText);
+          if (!savedTextSticker) {
+            savedTextSticker = { id: widget.stickerCustomStickerId || (window.crypto?.randomUUID?.() || ('sticker-' + Date.now() + '-' + Math.random().toString(36).slice(2))), type: 'text', name: widget.stickerCustomText.slice(0, 40), text: widget.stickerCustomText, createdAt: Date.now() };
+            customStickers.push(savedTextSticker);
+            stickerLibraryChanged = true;
+          }
+          if (widget.stickerCustomStickerId !== savedTextSticker.id) { widget.stickerCustomStickerId = savedTextSticker.id; workspaceStickerChanged = true; }
+        } else if (widget.stickerCustomActive === 'image' && widget.stickerCustomImageId) {
+          let savedImageSticker = customStickers.find(sticker => sticker.id === widget.stickerCustomStickerId && sticker.type === 'image') || customStickers.find(sticker => sticker.type === 'image' && sticker.assetId === widget.stickerCustomImageId);
+          if (!savedImageSticker) {
+            savedImageSticker = { id: widget.stickerCustomStickerId || widget.stickerCustomImageId, type: 'image', name: 'Picture sticker ' + (customStickers.filter(sticker => sticker.type === 'image').length + 1), assetId: widget.stickerCustomImageId, createdAt: Date.now() };
+            customStickers.push(savedImageSticker);
+            stickerLibraryChanged = true;
+          }
+          if (widget.stickerCustomStickerId !== savedImageSticker.id) { widget.stickerCustomStickerId = savedImageSticker.id; workspaceStickerChanged = true; }
+        }
       }
     });
+    if (stickerLibraryChanged) safeLocalSet(CUSTOM_STICKERS_KEY, JSON.stringify(customStickers));
+    if (workspaceStickerChanged) saveWorkspace();
     return result;
   };
 
