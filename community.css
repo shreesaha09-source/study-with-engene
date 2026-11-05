@@ -37,3 +37,5 @@
 .community-review-actions button{min-height:42px}
 @media(max-width:680px){.community-review-card{grid-template-columns:1fr}.community-review-preview{height:min(70vw,360px)}}
 
+
+.community-announcement-admin{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding-top:11px;border-top:1px solid #eadde6}.community-announcement-admin p{margin:0;color:#8d6677;font-size:11px;line-height:1.45}.community-announcement-delete{flex:none;padding:8px 12px;background:#8f2949;color:#fff;font-size:12px}.community-announcement-delete:disabled{opacity:.55;cursor:wait}@media(max-width:600px){.community-announcement-admin{align-items:flex-start;flex-direction:column}}
