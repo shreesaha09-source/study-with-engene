@@ -236,6 +236,25 @@ Deno.serve(async (request) => {
           pages: [...pages.entries()].map(([page, count]) => ({ page, views: count })).sort((a, b) => b.views - a.views).slice(0, 10),
         });
       }
+      if (action === 'creator-delete-announcement') {
+        const id = clean(body?.id, 50);
+        if (!/^[0-9a-f-]{36}$/i.test(id)) return respond({ error: 'That announcement could not be found.' }, 400);
+        const { data: announcement, error: findError } = await admin.from('community_announcements')
+          .select('id,image_path').eq('id', id).eq('author_id', user.id).maybeSingle();
+        if (findError) throw findError;
+        if (!announcement) return respond({ error: 'That announcement could not be found or is not yours to delete.' }, 404);
+        const { error: readDeleteError } = await admin.from('community_announcement_reads').delete().eq('announcement_id', id);
+        if (readDeleteError) throw readDeleteError;
+        const { error: announcementDeleteError } = await admin.from('community_announcements')
+          .delete().eq('id', id).eq('author_id', user.id);
+        if (announcementDeleteError) throw announcementDeleteError;
+        let imageRemoved = true;
+        if (announcement.image_path && /^creator\/[a-f0-9-]+\.(png|jpg|webp|gif|avif)$/i.test(announcement.image_path)) {
+          const { error: imageRemoveError } = await admin.storage.from('community-announcements').remove([announcement.image_path]);
+          if (imageRemoveError) { imageRemoved = false; console.error('Announcement image cleanup failed', imageRemoveError); }
+        }
+        return respond({ deleted: true, image_removed: imageRemoved });
+      }
       if (action === 'creator-post') {
         const title = clean(body?.title, 120);
         const text = clean(body?.body, 3000);
