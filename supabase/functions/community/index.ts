@@ -161,6 +161,54 @@ Deno.serve(async (request) => {
       return respond({ status: 'review', message: 'Thanks. The artwork was hidden while it is checked.' });
     }
 
+    if (action === 'announcement-like-stats') {
+      const requestedIds = Array.isArray(body?.ids)
+        ? [...new Set(body.ids.map((id: unknown) => clean(id, 50)).filter((id) => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 50)
+        : [];
+      if (!requestedIds.length) return respond({ items: [] });
+      const { data: published, error: publishedError } = await admin.from('community_announcements')
+        .select('id').in('id', requestedIds).lte('published_at', new Date().toISOString());
+      if (publishedError) throw publishedError;
+      const publishedIds = (published || []).map((row) => row.id);
+      if (!publishedIds.length) return respond({ items: [] });
+      const { data: likes, error: likesError } = await admin.from('community_announcement_likes')
+        .select('announcement_id,user_id').in('announcement_id', publishedIds);
+      if (likesError) throw likesError;
+      const stats = new Map(publishedIds.map((id) => [id, { count: 0, liked: false }]));
+      for (const row of likes || []) {
+        const item = stats.get(row.announcement_id);
+        if (item) {
+          item.count += 1;
+          if (row.user_id === user.id) item.liked = true;
+        }
+      }
+      return respond({ items: [...stats.entries()].map(([id, item]) => ({ id, ...item })) });
+    }
+
+    if (action === 'announcement-like') {
+      const id = clean(body?.id, 50);
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return respond({ error: 'That announcement could not be found.' }, 400);
+      const { data: announcement, error: announcementError } = await admin.from('community_announcements')
+        .select('id').eq('id', id).lte('published_at', new Date().toISOString()).maybeSingle();
+      if (announcementError) throw announcementError;
+      if (!announcement) return respond({ error: 'That announcement is not available to like.' }, 404);
+      let mutationError;
+      if (body?.liked === true) {
+        const { error } = await admin.from('community_announcement_likes')
+          .upsert({ announcement_id: id, user_id: user.id }, { onConflict: 'announcement_id,user_id' });
+        mutationError = error;
+      } else {
+        const { error } = await admin.from('community_announcement_likes')
+          .delete().eq('announcement_id', id).eq('user_id', user.id);
+        mutationError = error;
+      }
+      if (mutationError) throw mutationError;
+      const { count, error: countError } = await admin.from('community_announcement_likes')
+        .select('announcement_id', { count: 'exact', head: true }).eq('announcement_id', id);
+      if (countError) throw countError;
+      return respond({ count: Number(count) || 0, liked: body?.liked === true });
+    }
+
     if (action.startsWith('creator-')) {
       if (!isCreator) return respond({ error: 'Only the site creator can do that.' }, 403);
       if (action === 'creator-image-upload-url') {
