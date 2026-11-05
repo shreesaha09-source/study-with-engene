@@ -39,3 +39,5 @@
 
 
 .community-announcement-admin{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding-top:11px;border-top:1px solid #eadde6}.community-announcement-admin p{margin:0;color:#8d6677;font-size:11px;line-height:1.45}.community-announcement-delete{flex:none;padding:8px 12px;background:#8f2949;color:#fff;font-size:12px}.community-announcement-delete:disabled{opacity:.55;cursor:wait}@media(max-width:600px){.community-announcement-admin{align-items:flex-start;flex-direction:column}}
+
+.community-announcement-like-row{display:flex;justify-content:flex-start;margin-top:13px}.community-announcement-like{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid #ead6e1;border-radius:999px;background:#fff7fb;color:#75445f;box-shadow:none;font-size:12px}.community-announcement-like:hover{background:#faeaf2;box-shadow:none}.community-announcement-like span[aria-hidden]{font-size:16px;line-height:1}.community-announcement-like.is-liked{border-color:#e7b4c5;background:#fff0f5;color:#9b3158}.community-announcement-like:disabled{opacity:.55;cursor:wait}
