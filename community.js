@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const state = { client: null, session: null, creator: false, tab: 'gallery', loading: false, pulseStop: null, pulseInterval: null, updatePulseInitialized: false, galleryRows: [], analyticsPage: '', analyticsEnteredAt: 0, analyticsSessionId: '', analyticsSource: '', analyticsSessionStartedAt: 0, analyticsEngagementSent: false, analyticsEngagementTimer: null };
+  const state = { client: null, session: null, creator: false, tab: 'gallery', loading: false, pulseStop: null, pulseInterval: null, updatePulseInitialized: false, galleryRows: [], analyticsPage: '', analyticsEnteredAt: 0, analyticsSessionId: '', analyticsSource: '', analyticsSessionStartedAt: 0, analyticsEngagementSent: false, analyticsEngagementTimer: null, announcements: [] };
   const cfg = () => window.ENGENE_STUDY_AI_CONFIG || {};
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
   const el = (id) => document.getElementById(id);
@@ -103,6 +103,7 @@
     if (shell && home) shell.insertBefore(section, home.nextSibling);
     document.querySelectorAll('[data-community-tab]').forEach((button) => button.addEventListener('click', () => setTab(button.dataset.communityTab)));
     el('communityUploadForm')?.addEventListener('submit', uploadArtwork);
+    el('communityAnnouncements')?.addEventListener('click', (event) => { const button = event.target.closest('[data-announcement-delete]'); if (button) deleteAnnouncement(button.dataset.announcementDelete, button); });
   }
   function setTab(tab) {
     state.tab = ['updates', 'review', 'analytics'].includes(tab) ? tab : 'gallery';
@@ -146,6 +147,7 @@
     const db = client();
     const { data: announcements, error } = await db.from('community_announcements').select('id,title,body,image_path,published_at').order('published_at', { ascending: false }).limit(50);
     if (error) throw error;
+    state.announcements = announcements || [];
     const ids = (announcements || []).map((row) => row.id);
     const { data: reads, error: readError } = ids.length ? await db.from('community_announcement_reads').select('announcement_id').eq('user_id', state.session.user.id).in('announcement_id', ids) : { data: [], error: null };
     if (readError) throw readError;
@@ -163,7 +165,8 @@
     const list = el('communityAnnouncements');
     if (list) list.innerHTML = announcements?.length ? announcements.map((row) => {
       const imageUrl = row.image_path ? db.storage.from('community-announcements').getPublicUrl(row.image_path).data.publicUrl : '';
-      return `<article class="community-announcement"><time>${new Date(row.published_at).toLocaleString()}</time>${!readSet.has(row.id) ? '<span class="community-new-tag">NEW</span>' : ''}<h4>${escapeHtml(row.title)}</h4><p>${escapeHtml(row.body).replace(/\n/g, '<br>')}</p>${imageUrl ? `<img class="community-announcement-image" loading="lazy" src="${escapeHtml(imageUrl)}" alt="Image for ${escapeHtml(row.title)}">` : ''}</article>`;
+      const deleteAction = state.creator ? `<div class="community-announcement-admin"><p>Deleting removes this update for everyone and cannot be undone.</p><button type="button" class="community-announcement-delete" data-announcement-delete="${escapeHtml(row.id)}">Delete announcement</button></div>` : '';
+      return `<article class="community-announcement"><time>${new Date(row.published_at).toLocaleString()}</time>${!readSet.has(row.id) ? '<span class="community-new-tag">NEW</span>' : ''}<h4>${escapeHtml(row.title)}</h4><p>${escapeHtml(row.body).replace(/\n/g, '<br>')}</p>${imageUrl ? `<img class="community-announcement-image" loading="lazy" src="${escapeHtml(imageUrl)}" alt="Image for ${escapeHtml(row.title)}">` : ''}${deleteAction}</article>`;
     }).join('') : '<div class="community-empty">No updates yet. Check back here for creator announcements.</div>';
   }
   async function checkCreator() {
@@ -179,6 +182,7 @@
     form.innerHTML = `<h3>Post an update</h3><form id="communityAnnouncementForm"><label>Title<input id="communityAnnouncementTitle" maxlength="120" required></label><label>Message<textarea id="communityAnnouncementBody" rows="4" maxlength="3000" required></textarea></label><label class="community-announcement-upload">Add an image <span>(optional)</span><input id="communityAnnouncementImage" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif"><span class="community-announcement-hint">You can publish text, an image, or both.</span></label><img id="communityAnnouncementPreview" class="community-announcement-preview hidden" alt="Selected update image preview"><button type="submit">Publish to everyone</button></form>`;
     el('communityAnnouncementForm').addEventListener('submit', publishAnnouncement);
     el('communityAnnouncementImage').addEventListener('change', previewAnnouncementImage);
+    await loadAnnouncements(false);
     const { review = [], reports = [] } = result;
     const reviewQueue = review.filter((row) => row.moderation_status === 'review');
     const reportCount = (id) => reports.filter((report) => report.art_id === id).length;
@@ -365,6 +369,20 @@
       await loadAnnouncements(false);
     } catch (error) {
       if (uploadedPath) await callFunction('creator-image-discard', { path: uploadedPath }).catch(() => {});
+      status(error.message, true);
+    } finally { button.disabled = false; }
+  }
+  async function deleteAnnouncement(id, button) {
+    const announcement = state.announcements.find((row) => row.id === id);
+    if (!state.creator || !announcement) return;
+    const confirmed = window.confirm(`Delete “${announcement.title}” for everyone? This cannot be undone. Its attached image will also be removed.`);
+    if (!confirmed) return;
+    button.disabled = true;
+    try {
+      await callFunction('creator-delete-announcement', { id });
+      status('Announcement deleted for everyone.');
+      await loadAnnouncements(false);
+    } catch (error) {
       status(error.message, true);
     } finally { button.disabled = false; }
   }
