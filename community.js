@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const state = { client: null, session: null, creator: false, tab: 'gallery', loading: false, pulseStop: null, pulseInterval: null, updatePulseInitialized: false, galleryRows: [], analyticsPage: '', analyticsEnteredAt: 0, analyticsSessionId: '', analyticsSource: '', analyticsSessionStartedAt: 0, analyticsEngagementSent: false, analyticsEngagementTimer: null, announcements: [] };
+  const state = { client: null, session: null, creator: false, tab: 'gallery', loading: false, pulseStop: null, pulseInterval: null, updatePulseInitialized: false, galleryRows: [], analyticsPage: '', analyticsEnteredAt: 0, analyticsSessionId: '', analyticsSource: '', analyticsSessionStartedAt: 0, analyticsEngagementSent: false, analyticsEngagementTimer: null, announcements: [], announcementLikes: {} };
   const cfg = () => window.ENGENE_STUDY_AI_CONFIG || {};
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
   const el = (id) => document.getElementById(id);
@@ -103,7 +103,7 @@
     if (shell && home) shell.insertBefore(section, home.nextSibling);
     document.querySelectorAll('[data-community-tab]').forEach((button) => button.addEventListener('click', () => setTab(button.dataset.communityTab)));
     el('communityUploadForm')?.addEventListener('submit', uploadArtwork);
-    el('communityAnnouncements')?.addEventListener('click', (event) => { const button = event.target.closest('[data-announcement-delete]'); if (button) deleteAnnouncement(button.dataset.announcementDelete, button); });
+    el('communityAnnouncements')?.addEventListener('click', (event) => { const likeButton = event.target.closest('[data-announcement-like]'); if (likeButton) { toggleAnnouncementLike(likeButton.dataset.announcementLike, likeButton); return; } const deleteButton = event.target.closest('[data-announcement-delete]'); if (deleteButton) deleteAnnouncement(deleteButton.dataset.announcementDelete, deleteButton); });
   }
   function setTab(tab) {
     state.tab = ['updates', 'review', 'analytics'].includes(tab) ? tab : 'gallery';
@@ -149,6 +149,14 @@
     if (error) throw error;
     state.announcements = announcements || [];
     const ids = (announcements || []).map((row) => row.id);
+    const announcementLikes = {};
+    if (ids.length) {
+      try {
+        const result = await callFunction('announcement-like-stats', { ids });
+        (result.items || []).forEach((item) => { announcementLikes[item.id] = { count: Math.max(0, Number(item.count) || 0), liked: Boolean(item.liked) }; });
+      } catch (error) { console.warn('Announcement likes could not be loaded.', error); }
+    }
+    state.announcementLikes = announcementLikes;
     const { data: reads, error: readError } = ids.length ? await db.from('community_announcement_reads').select('announcement_id').eq('user_id', state.session.user.id).in('announcement_id', ids) : { data: [], error: null };
     if (readError) throw readError;
     const readSet = new Set((reads || []).map((row) => row.announcement_id));
@@ -165,8 +173,10 @@
     const list = el('communityAnnouncements');
     if (list) list.innerHTML = announcements?.length ? announcements.map((row) => {
       const imageUrl = row.image_path ? db.storage.from('community-announcements').getPublicUrl(row.image_path).data.publicUrl : '';
+      const likes = state.announcementLikes[row.id] || { count: 0, liked: false };
+      const likeAction = `<div class="community-announcement-like-row"><button type="button" class="community-announcement-like ${likes.liked ? 'is-liked' : ''}" data-announcement-like="${escapeHtml(row.id)}" aria-pressed="${likes.liked}" aria-label="${likes.liked ? 'Unlike' : 'Like'} this announcement"><span aria-hidden="true">${likes.liked ? '♥' : '♡'}</span> <span data-announcement-like-label>${likes.liked ? 'Liked' : 'Like'}</span> <span data-announcement-like-count>${likes.count}</span></button></div>`;
       const deleteAction = state.creator ? `<div class="community-announcement-admin"><p>Deleting removes this update for everyone and cannot be undone.</p><button type="button" class="community-announcement-delete" data-announcement-delete="${escapeHtml(row.id)}">Delete announcement</button></div>` : '';
-      return `<article class="community-announcement"><time>${new Date(row.published_at).toLocaleString()}</time>${!readSet.has(row.id) ? '<span class="community-new-tag">NEW</span>' : ''}<h4>${escapeHtml(row.title)}</h4><p>${escapeHtml(row.body).replace(/\n/g, '<br>')}</p>${imageUrl ? `<img class="community-announcement-image" loading="lazy" src="${escapeHtml(imageUrl)}" alt="Image for ${escapeHtml(row.title)}">` : ''}${deleteAction}</article>`;
+      return `<article class="community-announcement"><time>${new Date(row.published_at).toLocaleString()}</time>${!readSet.has(row.id) ? '<span class="community-new-tag">NEW</span>' : ''}<h4>${escapeHtml(row.title)}</h4><p>${escapeHtml(row.body).replace(/\n/g, '<br>')}</p>${imageUrl ? `<img class="community-announcement-image" loading="lazy" src="${escapeHtml(imageUrl)}" alt="Image for ${escapeHtml(row.title)}">` : ''}${likeAction}${deleteAction}</article>`;
     }).join('') : '<div class="community-empty">No updates yet. Check back here for creator announcements.</div>';
   }
   async function checkCreator() {
@@ -369,6 +379,26 @@
       await loadAnnouncements(false);
     } catch (error) {
       if (uploadedPath) await callFunction('creator-image-discard', { path: uploadedPath }).catch(() => {});
+      status(error.message, true);
+    } finally { button.disabled = false; }
+  }
+  async function toggleAnnouncementLike(id, button) {
+    const previous = state.announcementLikes[id] || { count: 0, liked: false };
+    button.disabled = true;
+    try {
+      const result = await callFunction('announcement-like', { id, liked: !previous.liked });
+      const next = { count: Math.max(0, Number(result.count) || 0), liked: Boolean(result.liked) };
+      state.announcementLikes[id] = next;
+      button.classList.toggle('is-liked', next.liked);
+      button.setAttribute('aria-pressed', String(next.liked));
+      button.setAttribute('aria-label', next.liked ? 'Unlike this announcement' : 'Like this announcement');
+      const symbol = button.querySelector('[aria-hidden="true"]');
+      const label = button.querySelector('[data-announcement-like-label]');
+      const count = button.querySelector('[data-announcement-like-count]');
+      if (symbol) symbol.textContent = next.liked ? '♥' : '♡';
+      if (label) label.textContent = next.liked ? 'Liked' : 'Like';
+      if (count) count.textContent = String(next.count);
+    } catch (error) {
       status(error.message, true);
     } finally { button.disabled = false; }
   }
