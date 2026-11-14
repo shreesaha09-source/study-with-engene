@@ -2835,10 +2835,62 @@ async function openStudyPictureInPicture = function () {const api=window.documen
   document.addEventListener('change', function (event) {
     const picker = event.target.closest('[data-sticker-choice]');
     if (!picker) return;
-    const kind = String(picker.value || '').split(':')[0];
-    if (kind === 'create' || kind === 'edit') return;
+    const widgetElement = picker.closest('[data-widget-id]');
+    const widget = workspaceModel.widgets.find(item => item.id === widgetElement?.dataset.widgetId && item.type === 'sticker');
+    if (!widget) return;
+    const parts = String(picker.value || '').split(':');
+    const kind = parts.shift();
+    const value = parts.join(':');
+    if (kind === 'create' || kind === 'edit') {
+      event.stopImmediatePropagation();
+      window.openWorkspaceStickerCreator?.(widget.id, kind === 'edit' ? value : null);
+      return;
+    }
     event.stopImmediatePropagation();
-    window.handleWorkspaceStickerChoice(picker, event);
+    if (kind === 'text') {
+      widget.stickerCustomStickerId = '';
+      widget.stickerCustomActive = '';
+      widget.stickerCustomImage = '';
+      widget.stickerCustomImageId = '';
+      widget.stickerImage = false;
+      widget.stickerText = STUDY_STICKER_QUOTES[Number(value)] || STUDY_STICKER_QUOTES[0];
+    } else if (kind === 'member' && members.includes(value)) {
+      widget.stickerCustomStickerId = '';
+      widget.stickerCustomActive = '';
+      widget.stickerCustomImage = '';
+      widget.stickerCustomImageId = '';
+      widget.stickerImage = true;
+      widget.stickerMember = value;
+      widget.stickerText = '';
+    } else if (kind === 'saved') {
+      const library = loadJSON('studyverse_custom_stickers_v1', []);
+      const sticker = Array.isArray(library) ? library.find(item => item && item.id === value) : null;
+      if (!sticker) return;
+      widget.stickerCustomStickerId = sticker.id;
+      widget.stickerCustomActive = sticker.type;
+      if (sticker.type === 'image') {
+        widget.stickerImage = true;
+        widget.stickerCustomImage = sticker.imageData || sticker.dataUrl || sticker.src || '';
+        widget.stickerCustomImageId = sticker.assetId || sticker.asset_id || sticker.imageId || '';
+      } else {
+        widget.stickerImage = false;
+        widget.stickerCustomText = sticker.text || sticker.name || '';
+        widget.stickerText = '';
+      }
+    } else if (kind === 'custom' && value === 'text' && widget.stickerCustomText) {
+      widget.stickerCustomStickerId = '';
+      widget.stickerCustomActive = 'text';
+      widget.stickerImage = false;
+      widget.stickerText = '';
+    } else if (kind === 'custom' && value === 'image' && (widget.stickerCustomImage || widget.stickerCustomImageId)) {
+      widget.stickerCustomStickerId = '';
+      widget.stickerCustomActive = 'image';
+      widget.stickerImage = true;
+    } else return;
+    saveWorkspace();
+    window.persistWorkspaceStickerSelection?.(widget);
+    (window.renderWorkspace || renderWorkspace)();
+    window.hydrateWorkspaceStickerAssets?.();
   }, true);
   window.renderFocusStickerChoices();
   window.renderFocusSticker();
