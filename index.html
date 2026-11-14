@@ -2617,6 +2617,7 @@ async function openStudyPictureInPicture = function () {const api=window.documen
         const url = URL.createObjectURL(request.result);
         focusStickerObjectUrls.set(item.id, url);
         image.src = url;
+        syncFocusPictureInPicture(true);
       };
     };
   }
