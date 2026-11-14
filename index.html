@@ -1140,7 +1140,7 @@ const memberOptions=members.map(name=>'<option value="member:'+esc(name)+'" '+(s
 const savedOptions=savedStickers.map(item=>'<option value="saved:'+esc(item.id)+'" '+(selectedSticker==='saved:'+item.id?'selected':'')+'>'+esc(item.name||(item.type==='text'?item.text:'Picture sticker'))+'</option>').join('');
 const customOptions=(customText?'<option value="custom:text" '+(selectedSticker==='custom:text'?'selected':'')+'>My text sticker</option>':'')+(hasCustomImage?'<option value="custom:image" '+(selectedSticker==='custom:image'?'selected':'')+'>My picture sticker</option>':'');
 const editOptions=savedStickers.map(item=>'<option value="edit:'+esc(item.id)+'">Edit '+esc(item.name||(item.type==='text'?item.text:'Picture sticker'))+'…</option>').join('');
-content='<div class="workspace-widget-content"><div class="sticker-card" data-sticker-body role="button" tabindex="0" aria-label="Click to choose a different sticker">'+stickerBody+'</div><select class="sticker-choice" data-sticker-choice aria-label="Choose a study sticker"><option value="">Choose a sticker…</option><optgroup label="Text Stickers">'+textOptions+'</optgroup><optgroup label="Member Stickers">'+memberOptions+'</optgroup><optgroup label="Custom Stickers">'+(savedOptions+customOptions||'<option value="" disabled>No custom stickers yet</option>')+'</optgroup>'+(editOptions?'<optgroup label="Edit a custom sticker">'+editOptions+'</optgroup>':'')+'<optgroup label="Create"><option value="create:new">Create a sticker…</option></optgroup></select></div>';
+content='<div class="workspace-widget-content"><div class="sticker-card" data-sticker-body role="button" tabindex="0" aria-label="Click to choose a different sticker">'+stickerBody+'</div><select class="sticker-choice" data-sticker-choice aria-label="Choose a study sticker" onchange="handleWorkspaceStickerChoice(this,event)"><option value="">Choose a sticker…</option><optgroup label="Text Stickers">'+textOptions+'</optgroup><optgroup label="Member Stickers">'+memberOptions+'</optgroup><optgroup label="Custom Stickers">'+(savedOptions+customOptions||'<option value="" disabled>No custom stickers yet</option>')+'</optgroup>'+(editOptions?'<optgroup label="Edit a custom sticker">'+editOptions+'</optgroup>':'')+'<optgroup label="Create"><option value="create:new">Create a sticker…</option></optgroup></select></div>';
 }else if(w.type==='media'){cls+='media-widget';const mediaId=extractYouTubeId(w.mediaUrl);content='<div class="workspace-widget-content">'+(mediaId?'<div class="media-frame-wrap">'+youtubeFrame(mediaId,false)+'</div>':'<div class="media-empty">A quiet little spot for a study video.<br>Paste a YouTube link below when you are ready.</div>')+'<div class="media-set-row"><input data-media-input placeholder="YouTube link or video ID" value="'+esc(w.mediaUrl)+'"><button data-widget-action="media-load">Load</button></div></div>';}
 else if(w.type==='planner'){cls+='planner-widget';const pending=tasks.filter(t=>t.status!=='Completed').slice(0,4);content='<div class="workspace-widget-content"><h3 class="planner-peek-title">A gentle plan for today</h3><div class="planner-peek-list">'+(pending.length?pending.map(t=>'<button class="planner-peek-row planner-check-row" data-widget-action="complete-task" data-task-no="'+t.no+'"><i>□</i><span>'+esc(t.name)+'</span><b>'+Number(t.duration||0)+'m</b></button>').join(''):'<small>No open tasks. A fresh page ✨</small>')+'</div><button class="planner-open" data-widget-action="open-planner">Open full planner ↗</button></div>';}
 else if(w.type==='mission'){cls+='planner-widget mission-widget';content='<div class="workspace-widget-content">'+missionWidgetContent()+'</div>';}
@@ -2780,6 +2780,57 @@ async function openStudyPictureInPicture = function () {const api=window.documen
   const style = document.createElement('style');
   style.textContent = '.focus-sticker-remove{position:absolute;top:-9px;right:-9px;width:26px;height:26px;border:1px solid #ffffffd9;border-radius:50%;background:var(--accent,#741f3a);color:#fff;font-size:19px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s ease;box-shadow:0 3px 12px #160b1d55}.focus-sticker-surface:hover .focus-sticker-remove,.focus-sticker-surface:focus-within .focus-sticker-remove{opacity:1}.focus-sticker-caption{max-width:100%;max-height:100%;overflow:hidden;pointer-events:none}.focus-sticker-multi-item{box-sizing:border-box}';
   document.head.appendChild(style);
+  window.handleWorkspaceStickerChoice = function (select, event) {
+    const widgetElement = select?.closest('[data-widget-id]');
+    const widget = workspaceModel.widgets.find(item => item.id === widgetElement?.dataset.widgetId && item.type === 'sticker');
+    if (!widget || !select.value) { event?.stopImmediatePropagation?.(); return; }
+    const parts = select.value.split(':');
+    const kind = parts.shift();
+    const value = parts.join(':');
+    if (kind === 'create' || kind === 'edit') return;
+    event?.stopImmediatePropagation?.();
+    if (kind === 'text') {
+      widget.stickerCustomStickerId = '';
+      widget.stickerCustomActive = '';
+      widget.stickerImage = false;
+      widget.stickerText = STUDY_STICKER_QUOTES[Number(value)] || STUDY_STICKER_QUOTES[0];
+    } else if (kind === 'member' && members.includes(value)) {
+      widget.stickerCustomStickerId = '';
+      widget.stickerCustomActive = '';
+      widget.stickerImage = true;
+      widget.stickerMember = value;
+      widget.stickerCustomImage = '';
+      widget.stickerCustomImageId = '';
+      widget.stickerText = '';
+    } else if (kind === 'saved') {
+      const library = loadJSON('studyverse_custom_stickers_v1', []);
+      const sticker = Array.isArray(library) ? library.find(item => item && item.id === value) : null;
+      if (!sticker) return;
+      widget.stickerCustomStickerId = sticker.id;
+      widget.stickerCustomActive = sticker.type;
+      if (sticker.type === 'image') {
+        widget.stickerImage = true;
+        widget.stickerCustomImage = '';
+        widget.stickerCustomImageId = sticker.assetId || '';
+      } else {
+        widget.stickerImage = false;
+        widget.stickerCustomText = sticker.text || sticker.name || '';
+        widget.stickerText = '';
+      }
+    } else if (kind === 'custom' && value === 'text' && widget.stickerCustomText) {
+      widget.stickerCustomStickerId = '';
+      widget.stickerCustomActive = 'text';
+      widget.stickerImage = false;
+      widget.stickerText = '';
+    } else if (kind === 'custom' && value === 'image' && (widget.stickerCustomImage || widget.stickerCustomImageId)) {
+      widget.stickerCustomStickerId = '';
+      widget.stickerCustomActive = 'image';
+      widget.stickerImage = true;
+    } else return;
+    saveWorkspace();
+    renderWorkspace();
+    window.hydrateWorkspaceStickerAssets?.();
+  };
   window.renderFocusStickerChoices();
   window.renderFocusSticker();
   window.renderWorkspace?.();
