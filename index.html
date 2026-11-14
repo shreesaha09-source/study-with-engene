@@ -1640,6 +1640,9 @@ document.addEventListener('keydown',event=>{
 (() => {
   'use strict';
 
+  if (window.__STUDYVERSE_MINI_DESK_PATCH_LOADED__) return;
+  window.__STUDYVERSE_MINI_DESK_PATCH_LOADED__ = true;
+
   const TASK_PROGRESS_KEY = 'esc_mini_desk_task_progress_v1';
   const SESSION_COUNT_KEY = 'esc_mini_desk_session_count_v1';
   const DAILY_SESSION_GOAL = 5;
