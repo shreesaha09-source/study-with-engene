@@ -646,7 +646,7 @@ tbody tr:nth-child(even){background:#fff9fb}tbody tr:hover{background:color-mix(
       </div>
       <header class="workspace-toolbar">
         <div class="workspace-toolbar-left"><button class="drawer-toggle" onclick="toggleWorkspaceDrawer()" aria-label="Open widget drawer" title="Open widget drawer">☰</button><div><span class="workspace-eyebrow">ENGENEverse</span><h1>My study desk</h1></div></div>
-        <div class="workspace-toolbar-actions"><span id="workspaceClock" class="workspace-live-clock"></span><button class="canvas-tool-button" onclick="openStudyPictureInPicture()" title="Keep your timer and tasks visible in a small window">▣ Mini desk</button><button class="canvas-tool-button" onclick="toggleCanvasGrid()" id="canvasGridButton" title="Toggle canvas grid" aria-pressed="false">▦ Grid</button><button class="canvas-tool-button" onclick="toggleCanvasQuiet()" id="canvasQuietButton" title="Toggle quiet canvas" aria-pressed="false">☾ Quiet</button><button class="canvas-tool-button whiteboard-toggle" onclick="toggleWorkspaceWhiteboard()" id="canvasWhiteboardButton" title="Draw on your quiet desk" aria-label="Toggle whiteboard mode" aria-pressed="false">✎</button></div>
+        <div class="workspace-toolbar-actions"><span id="workspaceClock" class="workspace-live-clock"></span><button class="canvas-tool-button" onclick="openStudyPictureInPicture()" title="Keep your timer and tasks visible in a small window">▣ Mini desk</button><button class="canvas-tool-button" onclick="openStudyStickerPicker()" title="Add a picture or custom sticker to the canvas">＋ Sticker</button><button class="canvas-tool-button" onclick="toggleCanvasGrid()" id="canvasGridButton" title="Toggle canvas grid" aria-pressed="false">▦ Grid</button><button class="canvas-tool-button" onclick="toggleCanvasQuiet()" id="canvasQuietButton" title="Toggle quiet canvas" aria-pressed="false">☾ Quiet</button><button class="canvas-tool-button whiteboard-toggle" onclick="toggleWorkspaceWhiteboard()" id="canvasWhiteboardButton" title="Draw on your quiet desk" aria-label="Toggle whiteboard mode" aria-pressed="false">✎</button></div>
       </header>
       <div id="workspaceWidgetLayer" class="workspace-widget-layer"></div>
       <div id="workspaceEmptyHint" class="workspace-empty-hint hidden"><span>✦</span><b>Your desk, your pace.</b><small>Open the drawer and drop a timer, note, or sticker onto the canvas.</small></div>
@@ -2372,15 +2372,11 @@ document.addEventListener('keydown',event=>{
   document.head.appendChild(stickerCaptionStyles);
 
   window.openStudyStickerPicker = function () {
-    let sticker = workspaceModel.widgets.find(widget => widget.type === 'sticker' && widget.visible) || workspaceModel.widgets.find(widget => widget.type === 'sticker');
-    if (!sticker) {
-      sticker = makeWorkspaceWidget('sticker');
-      workspaceModel.widgets.push(sticker);
-    }
-    sticker.visible = true;
-    sticker.collapsed = false;
+    const sticker = makeWorkspaceWidget('sticker');
+    workspaceModel.widgets.push(sticker);
     saveWorkspace();
     showView('workspace');
+    toggleWorkspaceDrawer(false);
     renderWorkspace();
     requestAnimationFrame(() => {
       const element = Array.from(document.querySelectorAll('.sticker-widget')).find(item => item.dataset.widgetId === String(sticker.id));
