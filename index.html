@@ -2358,6 +2358,9 @@ document.addEventListener('keydown',event=>{
     try { dialog.showModal(); } catch (error) { console.warn('Could not open the sticker creator.', error); }
   }
 
+  window.openWorkspaceStickerCreator = openStickerCreator;
+  window.persistWorkspaceStickerSelection = saveStickerSelection;
+
   function toggleStickerPicker(sticker) {
     if (!sticker) return;
     const wasOpen = sticker.classList.contains('sticker-picker-open');
