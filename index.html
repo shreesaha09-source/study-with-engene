@@ -1125,7 +1125,7 @@ const stickerLibrary=loadJSON('studyverse_custom_stickers_v1',[]);
 const savedStickers=Array.isArray(stickerLibrary)?stickerLibrary.filter(item=>item&&typeof item.id==='string'&&['text','image'].includes(item.type)):[];
 const selectedSavedSticker=savedStickers.find(item=>item.id===w.stickerCustomStickerId);
 const customText=String(w.stickerCustomText||'').trim();
-const customImage=typeof w.stickerCustomImage==='string'&&/^data:image\\/(?:png|jpeg);base64,/.test(w.stickerCustomImage)?w.stickerCustomImage:'';
+const customImage=typeof w.stickerCustomImage==='string'&&(w.stickerCustomImage.startsWith('data:image/png;base64,')||w.stickerCustomImage.startsWith('data:image/jpeg;base64,'))?w.stickerCustomImage:'';
 const customImageId=typeof w.stickerCustomImageId==='string'?w.stickerCustomImageId:'';
 const hasCustomImage=Boolean(customImage||customImageId||(selectedSavedSticker&&selectedSavedSticker.type==='image'));
 const selectedSticker=selectedSavedSticker?'saved:'+selectedSavedSticker.id:(w.stickerCustomActive==='image'&&hasCustomImage?'custom:image':(w.stickerCustomActive==='text'&&customText?'custom:text':(w.stickerImage?'member:'+(members.includes(w.stickerMember)?w.stickerMember:settings.member):'text:'+Math.max(0,STUDY_STICKER_QUOTES.indexOf(w.stickerText||STUDY_STICKER_QUOTES[0])))));
