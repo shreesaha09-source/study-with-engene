@@ -516,6 +516,7 @@
       showStatus('Firebase SDK did not load. Check the connection and reload.', true);
       return;
     }
+    if (!firebase.apps.length) firebase.initializeApp(CONFIG);
     state.auth = firebase.auth();
     state.db = firebase.firestore();
     state.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function (error) {
