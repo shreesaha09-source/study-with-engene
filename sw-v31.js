@@ -1,4 +1,4 @@
-const CACHE_NAME = 'engene-studyverse-shell-v34';
+const CACHE_NAME = 'engene-studyverse-shell-v35';
 const APP_SHELL = [
   './',
   './index.html',
@@ -19,6 +19,8 @@ const APP_SHELL = [
   './supabase-config.js',
   './study-ai.css',
   './study-ai.js',
+  './firebase-config.js',
+  './firebase-cloud-sync.js',
   './studyverse-cloud.js',
   './community.css',
   './community.js'
