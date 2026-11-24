@@ -436,10 +436,10 @@
     } finally { state.busy = false; }
   }
 
-  function scheduleSync() {
+  function scheduleSync(delay) {
     if (state.applying || !state.user) return;
     clearTimeout(state.timer);
-    state.timer = setTimeout(syncNow, 1200);
+    state.timer = setTimeout(syncNow, Number(delay) || 1200);
   }
 
   function beginBridgeWait() {
@@ -545,7 +545,7 @@
     const originalSet = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key, value) {
       const result = originalSet.call(this, key, value);
-      if (this === localStorage && String(key).indexOf('esc_') === 0) scheduleSync();
+      if (this === localStorage && String(key).indexOf('esc_') === 0) scheduleSync(String(key) === 'esc_timer_session_v1' ? 30000 : 1200);
       return result;
     };
     const originalRemove = Storage.prototype.removeItem;
