@@ -2166,6 +2166,7 @@
 
   async function init(){
 
+    firebaseUser = window.studyverseFirebase?.auth?.currentUser || firebaseUser;
     addStyles();
 
 
