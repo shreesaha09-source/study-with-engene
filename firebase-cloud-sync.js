@@ -545,7 +545,7 @@
     const originalSet = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key, value) {
       const result = originalSet.call(this, key, value);
-      if (this === localStorage && String(key).indexOf('esc_') === 0) scheduleSync(String(key) === 'esc_timer_session_v1' ? 30000 : 1200);
+      if (this === localStorage && String(key).indexOf('esc_') === 0) scheduleSync(String(key) === 'esc_timer_session_v1' ? 60000 : 1200);
       return result;
     };
     const originalRemove = Storage.prototype.removeItem;
@@ -554,7 +554,7 @@
       if (this === localStorage && String(key).indexOf('esc_') === 0) scheduleSync();
       return result;
     };
-    setInterval(function () { if (state.user) syncNow(); }, 45000);
+    setInterval(function () { if (state.user) syncNow(); }, 120000);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize, { once: true });
