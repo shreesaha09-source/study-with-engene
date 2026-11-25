@@ -17,10 +17,10 @@ A cozy ENGENE study space designed to make studying a little more motivating. Pl
 * 📝 Add subjects using suggested options or enter your own
 * 🎨 Customizable accent colours that update the main UI
 * 🖼️ Custom backgrounds with automatic browser-side optimization
-* ☁️ Optional account support with Google or email login
+* ☁️ Optional Google account cloud sync with Firebase Authentication and Cloud Firestore
 * 🌍 Community Reach and feedback features
 * 💡 Feature Ideas and community voting
-* 💾 Local browser storage with export/import support
+* 💾 Local-first browser storage with Firebase cloud sync and export/import support
 * 💻 PWA support for installing Studyverse on a laptop or phone and opening the app shell offline
 
 ## ✦ GitHub Pages
@@ -37,7 +37,9 @@ For embedded YouTube videos to work correctly, test the project through the depl
 
 Studyverse can be used as a guest or with an account.
 
-Guest mode keeps the app's main study data stored locally in the browser. Account functionality allows Studyverse to provide features such as community participation and prepares the app for future cross-device functionality.
+Guest mode keeps the app's main study data stored locally in the browser. Google sign-in enables Firebase cloud sync for the saved app state and custom background/sticker images. The Supabase account layer remains in place for community features.
+
+See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for Firebase web configuration, Google provider setup, and Firestore security rules.
 
 The project does not require precise location information for its community features.
 
