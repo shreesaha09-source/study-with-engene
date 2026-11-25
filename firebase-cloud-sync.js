@@ -512,13 +512,19 @@
       window.dispatchEvent(new CustomEvent('studyverse-firebase-auth-changed', { detail: { user: null, configured: false } }));
       return;
     }
-    if (!window.firebase || !firebase.apps || !firebase.apps.length) {
+    if (!window.firebase || !Array.isArray(firebase.apps) || typeof firebase.initializeApp !== 'function') {
       showStatus('Firebase SDK did not load. Check the connection and reload.', true);
       return;
     }
-    if (!firebase.apps.length) firebase.initializeApp(CONFIG);
-    state.auth = firebase.auth();
-    state.db = firebase.firestore();
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(CONFIG);
+      state.auth = firebase.auth();
+      state.db = firebase.firestore();
+    } catch (error) {
+      console.error('Firebase initialization failed:', error);
+      showStatus('Firebase could not initialize. Check firebase-config.js and reload.', true);
+      return;
+    }
     state.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function (error) {
       console.warn('Firebase could not enable local sign-in persistence.', error);
     });
