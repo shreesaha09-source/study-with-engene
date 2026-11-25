@@ -1,4 +1,4 @@
-const CACHE_NAME = 'engene-studyverse-shell-v35';
+const CACHE_NAME = 'engene-studyverse-shell-v36';
 const APP_SHELL = [
   './',
   './index.html',
