@@ -505,7 +505,16 @@ tbody tr:nth-child(even){background:#fff9fb}tbody tr:hover{background:color-mix(
 .focus-sticker-panel-actions{display:flex;justify-content:flex-end;margin-top:8px}
 .focus-sticker-panel-actions button{padding:6px 9px;font-size:10px}
 @media(max-width:600px){.focus-sticker-surface{max-width:75vw}.focus-sticker-resize{width:26px;height:26px}}
-</style></head>
+</style><style id="timer-setup-layout-polish">
+.timer-setup .study-room-actions{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr) 50px;align-items:stretch;gap:8px;width:100%}
+.timer-setup .study-room-actions .timer-start-button{width:100%;min-width:0;min-height:50px;padding:9px 10px;font-size:clamp(13px,3.2vw,16px);line-height:1.15;white-space:normal}
+.timer-setup .study-room-actions #focusPipStartButton{width:100%;min-width:0;min-height:50px;padding:8px 9px!important;border-radius:15px!important;font-size:clamp(11px,2.8vw,13px)!important;line-height:1.15;font-weight:800;white-space:normal}
+.timer-setup .study-room-actions .timer-reset-button{width:50px;height:50px;justify-self:center;align-self:center;padding:0;margin:0;border-radius:15px}
+.timer-setup .timer-notification-copy button{border:0!important;outline:none;text-decoration:none}
+.timer-setup .timer-notification-copy button:focus-visible{outline:2px solid var(--accent)!important;outline-offset:3px;border-radius:5px}
+@media(max-width:359px){.timer-setup .study-room-actions{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.timer-setup .study-room-actions .timer-reset-button{grid-column:1/-1;justify-self:center}}
+</style>
+</head>
 <body>
 <div class="app"><div class="shell">
 <header class="hero"><div><h1>🖤 ENGENEverse</h1><p id="heroSub">Plan • Focus • Grow • Go big or Go home</p></div><div class="hero-actions"><button class="ghost" style="color:#fff;border-color:#fff8" onclick="showView('settings')">⚙️ Settings</button><button class="ghost" style="color:#fff;border-color:#fff8" onclick="showView('workspace')">✦ Desk Canvas</button></div></header>
