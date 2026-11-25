@@ -453,9 +453,24 @@
     if (!supabase || !userCredential) return;
     const providerCredential = firebase.auth.GoogleAuthProvider.credentialFromResult(userCredential);
     const idToken = providerCredential && providerCredential.idToken;
-    if (!idToken) throw new Error('Google sign-in succeeded, but its ID token was unavailable for the community account.');
-    const response = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken });
-    if (response.error) throw response.error;
+    if (idToken) {
+      const response = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken });
+      if (response.error) throw response.error;
+      return;
+    }
+
+    // Firebase's Google popup normally exposes a Google access token, not an ID token.
+    // Supabase needs Google's ID token, so complete community auth through its own Google OAuth flow.
+    const oauth = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: location.origin + location.pathname,
+        queryParams: userCredential.user && userCredential.user.email
+          ? { login_hint: userCredential.user.email }
+          : {}
+      }
+    });
+    if (oauth.error) throw oauth.error;
   }
 
   async function signInWithGoogle() {
