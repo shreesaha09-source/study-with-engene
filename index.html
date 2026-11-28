@@ -310,7 +310,7 @@ tbody tr:nth-child(even){background:#fff9fb}tbody tr:hover{background:color-mix(
 
 <style>
 /* Dashboard: keep the countdown in the top row between the greeting and stats. */
-.dashboard{grid-template-columns:minmax(260px,1.3fr) minmax(220px,.9fr) minmax(320px,1.15fr);grid-template-areas:"intro exam stats" "companion companion notes";align-items:stretch}
+.dashboard{grid-template-columns:minmax(250px,1fr) minmax(220px,.9fr) minmax(500px,1.7fr);grid-template-areas:"intro exam stats" "companion companion notes";align-items:stretch}
 .dashboard-intro{grid-area:intro;min-width:0}
 .dashboard .statgrid{grid-area:stats;grid-template-columns:repeat(2,minmax(0,1fr));align-self:start}
 .dashboard .home-companion{grid-area:companion;margin:0;height:100%;min-height:174px}
@@ -540,7 +540,7 @@ input,select,textarea{min-width:0;line-height:1.35}
 .statgroup-inner{flex:1;align-items:stretch}
 .stat{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:145px}
 .stat b{display:flex;align-items:center;justify-content:center;width:100%;min-height:30px;margin:0;line-height:1.1;font-variant-numeric:tabular-nums}
-.stat-label{display:flex;align-items:center;justify-content:center;width:100%;max-width:100%;min-height:2.4em;white-space:normal;line-height:1.25;text-align:center;text-wrap:balance;overflow-wrap:anywhere}
+.stat-label{display:flex;align-items:center;justify-content:center;width:100%;max-width:100%;min-height:2.4em;white-space:normal;line-height:1.25;text-align:center;text-wrap:balance;overflow-wrap:normal;word-break:normal}
 @media(max-width:700px){.dashboard .statgrid{grid-template-columns:minmax(0,1fr)}.dashboard .statgroup-inner{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard .stat{min-height:126px;padding:12px 8px}}
 @media(max-width:360px){.dashboard .statgroup-inner{gap:7px}.dashboard .statgroup{padding:10px}.dashboard .stat{min-height:116px;padding:10px 5px}.dashboard .stat b{font-size:22px}.dashboard .stat-label{font-size:12px}}
 </style>
