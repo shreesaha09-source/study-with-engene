@@ -27,6 +27,7 @@
   let wired = false;
   let expandedDays = new Set();
   let saveStatus = 'saved';
+  let scheduleView = 'grid';
 
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
   function loadState() {
@@ -50,6 +51,10 @@
   function validTime(value, fallback) { return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value||'')) ? String(value) : fallback; }
   function minutes(time) { const [h,m]=String(time||'00:00').split(':').map(Number); return h*60+m; }
   function timeString(value) { const h=Math.floor(value/60),m=value%60; return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'); }
+  function clockString(value) { return timeString(((value%1440)+1440)%1440); }
+  function dateOrdinal(value) { const [y,m,d]=String(value||'').split('-').map(Number); return Math.floor(Date.UTC(y,m-1,d)/86400000); }
+  function absoluteStart(session) { return dateOrdinal(session.date)*1440+minutes(session.start); }
+  function absoluteEnd(session) { return absoluteStart(session)+session.duration; }
   function normalizeState(raw) {
     raw=raw&&typeof raw==='object'?raw:{};
     const a=raw.availability&&typeof raw.availability==='object'?raw.availability:{};
@@ -64,7 +69,7 @@
       const duration=Math.max(15,Math.min(240,Math.round((Number(x?.duration)||30)/5)*5));
       const start=validTime(x?.start,'16:00');
       const title=cleanText(x?.title,160);
-      if(!x||!validDateKey(x.date)||!title||minutes(start)+duration>1440)return null;
+      if(!x||!validDateKey(x.date)||!title)return null;
       const no=Number(x.taskNo);
       return {id:cleanText(x.id,70)||makeId(),taskNo:Number.isInteger(no)&&no>0?no:null,title,subject:cleanText(x.subject,80)||'Study',date:x.date,start,duration,note:cleanText(x.note,240),done:Boolean(x.done),completedAt:x.done?cleanText(x.completedAt,40)||null:null,source:x.source==='auto'?'auto':'manual',created:cleanText(x.created,40)||new Date().toISOString()};
     }).filter(Boolean):[];
@@ -112,7 +117,7 @@
   function dueSort(task) { const d=deadlineDate(task); return d?d.getTime():Number.MAX_SAFE_INTEGER; }
   function fmtDate(value, options) { return parseDate(value).toLocaleDateString(undefined,options||{weekday:'long',month:'short',day:'numeric'}); }
   function endMinute(session) { return minutes(session.start)+session.duration; }
-  function fmtRange(session) { return timeString(minutes(session.start))+'–'+timeString(endMinute(session)); }
+  function fmtRange(session) { const end=endMinute(session);return timeString(minutes(session.start))+'–'+clockString(end)+(end>=1440?' (+1 day)':''); }
   function weekTitle(start) {
     const end=addDays(start,6), opts={month:'short',day:'numeric'};
     return start.toLocaleDateString(undefined,opts)+' – '+end.toLocaleDateString(undefined,{...opts,year:'numeric'});
@@ -120,8 +125,8 @@
   function durationLabel(value) { const hours=Math.floor(value/60),mins=value%60;return hours?(mins?hours+'h '+mins+'m':hours+'h'):mins+'m'; }
   function dateSessions(date) { return state.sessions.filter(s=>s.date===date).sort((a,b)=>a.start.localeCompare(b.start)); }
   function nextUpcomingSession() {
-    const now=new Date(),todayValue=dateKey(now),clock=now.getHours()*60+now.getMinutes();
-    const session=state.sessions.filter(s=>!s.done&&(s.date>todayValue||(s.date===todayValue&&endMinute(s)>=clock))).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start))[0];
+    const now=new Date(),nowMinute=dateOrdinal(dateKey(now))*1440+now.getHours()*60+now.getMinutes();
+    const session=state.sessions.filter(s=>!s.done&&absoluteEnd(s)>=nowMinute).sort((a,b)=>absoluteStart(a)-absoluteStart(b))[0];
     if(!session)return null;const task=taskFor(session);return {...clone(session),title:displayTitle(session),subject:displaySubject(session),taskName:task?.name||'',taskStatus:task?.status||''};
   }
   function modal(html) { if(typeof window.openModal==='function')window.openModal(html); }
@@ -138,8 +143,16 @@
     const selector=document.getElementById('taTaskSelect');
     selector?.addEventListener('change',function(){const picked=tasksNow().find(t=>Number(t.no)===Number(this.value));if(picked){document.getElementById('taTitle').value=picked.name;document.getElementById('taSubject').value=picked.subject;document.getElementById('taDuration').value=Math.max(15,Math.min(240,Number(picked.duration)||45));}});
   }
-  function showFormError(text) { const node=document.getElementById('taFormError'); if(node)node.textContent=text; }
-  window.taSaveSession=function(id) {
+  function showFormError(text) { const node=document.getElementById('taFormError'); if(node){node.classList.remove('is-warning');node.textContent=text;} }
+  function showDailyLimitWarning(total, limit, id) {
+    const node=document.getElementById('taFormError');if(!node)return;
+    const extra=total-limit;
+    node.classList.add('is-warning');
+    node.innerHTML='<div class="ta-limit-warning"><strong>Daily study target exceeded</strong><span>You’re planning '+total+' / '+limit+' minutes today. That’s '+extra+' minutes above your daily target.</span><div class="ta-limit-warning-actions"><button type="button" class="ghost" data-limit-adjust>Adjust schedule</button><button type="button" data-limit-save>Save anyway</button></div></div>';
+    node.querySelector('[data-limit-adjust]')?.addEventListener('click',function(){node.classList.remove('is-warning');node.textContent='Adjust the date, time, or duration, then save again.';document.getElementById('taDuration')?.focus();});
+    node.querySelector('[data-limit-save]')?.addEventListener('click',function(){window.taSaveSession(id,true);});
+  }
+  window.taSaveSession=function(id,saveAnyway) {
     const taskNo=Number(document.getElementById('taTaskSelect')?.value)||null;
     const title=cleanText(document.getElementById('taTitle')?.value,160);
     const subject=cleanText(document.getElementById('taSubject')?.value,80)||'Study';
@@ -150,33 +163,37 @@
     if(!title)return showFormError('Add a short name for this study session.');
     if(!validDateKey(date)||!start)return showFormError('Choose a valid date and start time.');
     if(!Number.isFinite(duration)||duration<15||duration>240||duration%5!==0)return showFormError('Choose a duration from 15 to 240 minutes, in 5-minute steps.');
-    if(minutes(start)+duration>1440)return showFormError('This session would continue past midnight. Choose an earlier start or shorter duration.');
     const existing=id?state.sessions.find(s=>s.id===id):null;
     const linkedTask=taskNo?tasksNow().find(t=>Number(t.no)===Number(taskNo)):null;
     if(linkedTask?.status==='Completed'&&(!existing||Number(existing.taskNo)!==Number(taskNo)))return showFormError('Completed tasks cannot be added to new timetable sessions.');
     const candidate={id:existing?.id||makeId(),taskNo,title,subject,date,start,duration,note,done:existing?.done||false,source:'manual',created:existing?.created||new Date().toISOString()};
     const conflict=checkConflict(candidate,candidate.id);
     if(conflict)return showFormError(conflict);
+    const otherLoad=state.sessions.filter(s=>s.id!==candidate.id&&s.date===date).reduce((total,s)=>total+s.duration,0);
+    const total=otherLoad+duration,limit=state.availability.maxPerDay;
+    if(total>limit&&!saveAnyway)return showDailyLimitWarning(total,limit,id||'');
     if(existing)state.sessions=state.sessions.map(s=>s.id===id?candidate:s);else state.sessions.push(candidate);
     closeModal();selectedDate=date;weekAnchor=monday(parseDate(date));saveState(existing?'Session updated.':'Session saved to your timetable.');
     if(currentView!=='timeArchitect')window.showTimeArchitect(date);
   };
   function recurringConflict(session) {
-    const day=parseDate(session.date).getDay(),start=minutes(session.start),end=endMinute(session);
+    const base=parseDate(session.date),day=base.getDay(),start=minutes(session.start),end=endMinute(session);
     const window=state.availability.days[day];
     if(!window?.enabled)return 'You marked '+DAY_NAMES[day]+' as unavailable. Change availability or choose another day.';
-    if(start<minutes(window.start)||end>minutes(window.end))return 'This is outside your '+DAY_SHORT[day]+' study hours ('+window.start+'–'+window.end+'). Adjust availability or choose another time.';
-    const block=state.availability.busy.find(b=>b.days.includes(day)&&start<minutes(b.end)&&end>minutes(b.start));
-    if(block)return 'This overlaps your '+block.name+' commitment ('+block.start+'–'+block.end+'). Choose a different time.';
+    if(start<minutes(window.start)||start>=minutes(window.end)||(end<=1440&&end>minutes(window.end)))return 'This starts outside your '+DAY_SHORT[day]+' study hours ('+window.start+'–'+window.end+'). Adjust availability or choose another time.';
+    for(let offset=0;offset<=1;offset++){
+      const currentDay=addDays(base,offset).getDay(),partStart=offset===0?start:0,partEnd=Math.min(1440,end-offset*1440);
+      if(partEnd<=partStart)continue;
+      const block=state.availability.busy.find(b=>b.days.includes(currentDay)&&partStart<minutes(b.end)&&partEnd>minutes(b.start));
+      if(block)return 'This overlaps your '+block.name+' commitment on '+DAY_NAMES[currentDay]+' ('+block.start+'–'+block.end+'). Choose a different time.';
+    }
     return '';
   }
   function checkConflict(session, ignoreId) {
     const within=recurringConflict(session); if(within)return within;
-    const otherLoad=state.sessions.filter(s=>s.id!==ignoreId&&s.date===session.date).reduce((total,s)=>total+s.duration,0);
-    if(otherLoad+session.duration>state.availability.maxPerDay)return 'This would pass your daily study limit of '+state.availability.maxPerDay+' minutes. Choose another day or adjust the limit.';
-    const start=minutes(session.start),end=endMinute(session),gap=state.availability.breakMinutes;
-    const overlap=state.sessions.find(s=>s.id!==ignoreId&&s.date===session.date&&start<endMinute(s)+gap&&end>minutes(s.start)-gap);
-    if(overlap)return 'This overlaps the '+displayTitle(overlap)+' session ('+fmtRange(overlap)+'). Leave a short break or choose another time.';
+    const start=absoluteStart(session),end=absoluteEnd(session);
+    const overlap=state.sessions.find(s=>s.id!==ignoreId&&start<absoluteEnd(s)&&end>absoluteStart(s));
+    if(overlap)return 'This time overlaps “'+displayTitle(overlap)+'” on '+fmtDate(overlap.date)+' ('+fmtRange(overlap)+'). Choose a non-overlapping time.';
     return '';
   }
   function editSession(id) { const session=state.sessions.find(s=>s.id===id); if(session)sessionForm(session); }
@@ -237,7 +254,8 @@
     if(dayLoad(date,sessions)+duration>state.availability.maxPerDay)return false;
     if(state.availability.busy.some(b=>b.days.includes(day)&&start<minutes(b.end)&&end>minutes(b.start)))return false;
     const gap=state.availability.breakMinutes;
-    return !sessions.some(s=>s.date===date&&start<endMinute(s)+gap&&end>minutes(s.start)-gap);
+    const candidateStart=dateOrdinal(date)*1440+start,candidateEnd=candidateStart+duration;
+    return !sessions.some(s=>candidateStart<absoluteEnd(s)+gap&&candidateEnd>absoluteStart(s)-gap);
   }
   function availableSlot(date,duration,sessions=state.sessions,earliest=0) {
     const day=parseDate(date).getDay(),window=state.availability.days[day];if(!window?.enabled)return null;
@@ -348,13 +366,15 @@
     const title=displayTitle(session),subject=displaySubject(session),linked=Boolean(taskFor(session));
     const overdue=!session.done&&session.date<dateKey(today());
     const completionLabel=session.done?'Undo complete':'Mark complete';
-    const subjectLabel=subject+(session.taskNo?(linked?' · linked task':' · original task removed'):' · personal block');
-    return '<article class="ta-session '+(session.done?'is-done':'')+(overdue?' is-overdue':'')+'" data-session-id="'+esc(session.id)+'"><div class="ta-session-meta"><span class="ta-session-time">'+fmtRange(session)+'</span><span class="ta-session-duration">'+session.duration+' min</span></div><div class="ta-session-title">'+esc(title)+'</div><div class="ta-session-subline"><span class="ta-session-subject">'+esc(subjectLabel)+'</span><span class="ta-session-state '+(session.done?'is-complete':'')+'">'+(session.done?'✓ Completed':'Planned')+'</span></div>'+(expanded&&session.note?'<div class="ta-session-note">'+esc(session.note)+'</div>':'')+'<div class="ta-session-actions"><button type="button" data-ta-action="done" data-id="'+esc(session.id)+'" class="ta-complete-action '+(session.done?'is-undo':'')+'" aria-label="'+completionLabel+': '+esc(title)+'">'+(session.done?'↶ Undo':'✓ Done')+'</button><details class="ta-session-menu"><summary aria-label="More actions for '+esc(title)+'" title="More actions">•••</summary><div class="ta-session-menu-items">'+(!session.done?'<button type="button" data-ta-action="focus" data-id="'+esc(session.id)+'">Start focus timer</button>':'')+'<button type="button" data-ta-action="edit" data-id="'+esc(session.id)+'">Edit session</button><button type="button" data-ta-action="delete" data-id="'+esc(session.id)+'" class="is-danger">Remove session</button></div></details></div></article>';
+    const linkLabel=session.taskNo?(linked?'↗ Linked task':'Task no longer linked'):'Personal block';
+    return '<article class="ta-session '+(session.done?'is-done':'')+(overdue?' is-overdue':'')+'" data-session-id="'+esc(session.id)+'"><div class="ta-session-meta"><span class="ta-session-time">'+fmtRange(session)+'</span><span class="ta-session-duration">'+session.duration+' min</span></div><div class="ta-session-title">'+esc(title)+'</div><div class="ta-session-subline"><span class="ta-session-subject" title="'+esc(subject)+'">'+esc(subject)+'</span><span class="ta-session-state '+(session.done?'is-complete':'')+'">'+(session.done?'✓ Completed':'Planned')+'</span></div><span class="ta-session-context '+(session.taskNo&&linked?'is-linked':'')+'">'+linkLabel+'</span>'+(expanded&&session.note?'<div class="ta-session-note">'+esc(session.note)+'</div>':'')+'<div class="ta-session-actions"><button type="button" data-ta-action="done" data-id="'+esc(session.id)+'" class="ta-complete-action '+(session.done?'is-undo':'')+'" aria-label="'+completionLabel+': '+esc(title)+'">'+(session.done?'↶ Undo':'✓ Done')+'</button><details class="ta-session-menu"><summary aria-label="More actions for '+esc(title)+'" title="More actions">•••</summary><div class="ta-session-menu-items">'+(!session.done?'<button type="button" data-ta-action="focus" data-id="'+esc(session.id)+'">Start focus timer</button>':'')+'<button type="button" data-ta-action="edit" data-id="'+esc(session.id)+'">Edit session</button><button type="button" data-ta-action="delete" data-id="'+esc(session.id)+'" class="is-danger">Remove session</button></div></details></div></article>';
   }
   function dayCapacityLabel(date, items) {
     const day=parseDate(date).getDay(),hours=state.availability.days[day],scheduled=items.reduce((n,s)=>n+s.duration,0);
     if(!hours?.enabled)return 'No study hours set';
-    const remaining=Math.max(0,state.availability.maxPerDay-scheduled);
+    const excess=scheduled-state.availability.maxPerDay;
+    if(excess>0)return 'Study hours '+hours.start+'–'+hours.end+' · '+durationLabel(scheduled)+' scheduled · '+durationLabel(excess)+' above daily target';
+    const remaining=state.availability.maxPerDay-scheduled;
     return 'Study hours '+hours.start+'–'+hours.end+' · '+durationLabel(scheduled)+' scheduled · '+durationLabel(remaining)+' of daily limit left';
   }
   function dayTaskProgressMarkup(items) {
@@ -367,24 +387,35 @@
     const visible=expanded?items:items.slice(0,limit),more=items.length-limit;
     const dayLabel=date.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
     const sessions=visible.map(s=>sessionCard(s,expanded)).join('');
-    const empty=items.length?'':'<div class="ta-empty-day">No sessions planned yet. Your day is open.</div>';
+    const empty=items.length?'':'<div class="ta-empty-day">Your day is open.</div>';
     const moreButton=items.length>limit?'<button type="button" class="ta-more-sessions" data-ta-action="toggle-day" data-date="'+key+'" aria-expanded="'+expanded+'">'+(expanded?'Show fewer sessions':'+'+more+' more session'+(more===1?'':'s'))+'</button>':'';
     const dayButton='<button type="button" class="ta-day-title" data-ta-action="toggle-day" data-date="'+key+'" aria-expanded="'+expanded+'" aria-label="'+(expanded?'Collapse':'Expand')+' '+dayLabel+' schedule, '+items.length+' session'+(items.length===1?'':'s')+'"><span class="ta-day-name">'+DAY_SHORT[date.getDay()]+'</span><span class="ta-day-date">'+date.toLocaleDateString(undefined,{month:'short',day:'numeric'})+'</span></button>';
-    return '<section class="ta-day '+(todayFlag?'is-today ':'')+(selected?'is-selected ':'')+(expanded?'is-expanded':'')+'" data-day="'+key+'"><header class="ta-day-head">'+dayButton+'<span class="ta-day-count">'+items.length+' session'+(items.length===1?'':'s')+'</span><button type="button" class="ta-day-add" data-ta-action="add" data-date="'+key+'" aria-label="Add a session on '+dayLabel+'">+</button></header><div class="ta-day-capacity">'+esc(dayCapacityLabel(key,items))+'</div><div class="ta-day-sessions">'+sessions+empty+moreButton+'</div>'+(expanded?dayTaskProgressMarkup(items):'')+'</section>';
+    const todayBadge=todayFlag?'<span class="ta-today-label">Today</span>':'';
+    return '<section class="ta-day '+(todayFlag?'is-today ':'')+(selected?'is-selected ':'')+(expanded?'is-expanded':'')+'" data-day="'+key+'"><header class="ta-day-head"><div class="ta-day-heading">'+dayButton+todayBadge+'</div><span class="ta-day-count">'+items.length+' session'+(items.length===1?'':'s')+'</span><button type="button" class="ta-day-add" data-ta-action="add" data-date="'+key+'" aria-label="Add a session on '+dayLabel+'">+</button></header><div class="ta-day-capacity">'+esc(dayCapacityLabel(key,items))+'</div><div class="ta-day-sessions">'+sessions+empty+moreButton+'</div>'+(expanded?dayTaskProgressMarkup(items):'')+'</section>';
+  }
+  function agendaDay(date) {
+    const key=dateKey(date),items=dateSessions(key),todayFlag=key===dateKey(today()),selected=key===selectedDate;
+    const dayLabel=date.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+    const dayButton='<button type="button" class="ta-day-title" data-ta-action="select-day" data-date="'+key+'" aria-label="Select '+dayLabel+' for a new session"><span class="ta-day-name">'+DAY_NAMES[date.getDay()]+'</span><span class="ta-day-date">'+date.toLocaleDateString(undefined,{month:'short',day:'numeric'})+'</span></button>';
+    const todayBadge=todayFlag?'<span class="ta-today-label">Today</span>':'';
+    const sessions=items.length?items.map(s=>sessionCard(s,true)).join(''):'<div class="ta-empty-day">Your day is open.</div>';
+    return '<section class="ta-day ta-agenda-day '+(todayFlag?'is-today ':'')+(selected?'is-selected':'')+'" data-day="'+key+'"><header class="ta-day-head"><div class="ta-day-heading">'+dayButton+todayBadge+'</div><span class="ta-day-count">'+items.length+' session'+(items.length===1?'':'s')+'</span><button type="button" class="ta-day-add" data-ta-action="add" data-date="'+key+'" aria-label="Add a session on '+dayLabel+'">+</button></header><div class="ta-agenda-sessions">'+sessions+'</div></section>';
   }
   function render() {
     const root=document.getElementById('timeArchitect'); if(!root)return;
     const week=[];for(let i=0;i<7;i++)week.push(addDays(weekAnchor,i));
     const visibleSessions=state.sessions.filter(s=>s.date>=dateKey(week[0])&&s.date<=dateKey(week[6]));
-    const minutesThisWeek=visibleSessions.filter(s=>!s.done).reduce((n,s)=>n+s.duration,0);
     const doneCount=visibleSessions.filter(s=>s.done).length;
-    const sessionCount=visibleSessions.filter(s=>!s.done).length;
-    const summary='<div class="ta-summary" aria-label="Weekly timetable summary"><div><strong>'+sessionCount+'</strong><span>planned sessions</span></div><div><strong>'+durationLabel(minutesThisWeek)+'</strong><span>remaining study time</span></div><div><strong>'+doneCount+'</strong><span>completed sessions</span></div></div>';
+    const remainingCount=visibleSessions.length-doneCount;
+    const summary='<div class="ta-summary" aria-label="Weekly timetable summary"><div><strong>'+visibleSessions.length+'</strong><span>Total sessions</span></div><div><strong>'+doneCount+'</strong><span>Completed</span></div><div><strong>'+remainingCount+'</strong><span>Remaining</span></div></div>';
     const cards=week.map(dayCard).join('');
+    const agenda=week.map(agendaDay).join('');
     const pending=tasksNow().filter(t=>t.status!=='Completed');
     const statusLabel=saveStatus==='error'?'Could not save':'Saved on this device ✓';
     const nav='<div class="ta-week-toolbar"><div class="ta-week-nav"><button type="button" class="ta-nav-button" data-ta-action="week" data-delta="-1" aria-label="Previous week">‹<span>Previous</span></button><button type="button" class="ta-nav-button ta-today-button" data-ta-action="today">Today</button><strong class="ta-week-title">'+esc(weekTitle(weekAnchor))+'</strong><button type="button" class="ta-nav-button" data-ta-action="week" data-delta="1" aria-label="Next week"><span>Next</span>›</button></div><details class="ta-export-menu"><summary>Export timetable <span aria-hidden="true">⌄</span></summary><div class="ta-export-options"><button type="button" data-ta-action="export-pdf">Download PDF</button><button type="button" data-ta-action="export-png">Download PNG</button><button type="button" data-ta-action="export-ics">Export calendar (.ics)</button><button type="button" data-ta-action="print">Print timetable</button><p>PDF and PNG include every session in this week.</p></div></details></div>';
-    root.innerHTML='<div class="topbar"><div><div class="water-kicker">MAKE A HOME FOR YOUR STUDY ✦</div><h2>🗓️ Time Architect</h2></div><div class="ta-heading-tools"><span id="taSaveStatus" class="ta-save-status" data-state="'+saveStatus+'" role="status" aria-live="polite">'+esc(statusLabel)+'</span><button type="button" class="small ghost" onclick="showView(\'home\')">← Main Menu</button></div></div><p class="ta-intro">Your tasks show what needs doing. Your timetable helps decide when you will work on them. Sessions are saved automatically on this device.</p><div class="ta-actions"><button type="button" onclick="taAddSession()">＋ Add a session</button><button type="button" class="secondary" onclick="taGenerate()">✦ Build my timetable</button><button type="button" class="ghost" onclick="taReschedule()">Reschedule unfinished</button><button type="button" class="ghost" onclick="taAvailability()">⚙ My availability</button></div><div id="taNotice" class="ta-msg" role="status" aria-live="polite"></div>'+nav+summary+'<div class="ta-week-grid">'+cards+'</div>'+(visibleSessions.length?'':'<p class="ta-week-empty-note">Your week is open. Add a study session or build a timetable from your pending tasks.</p>')+'<p class="ta-calendar-note">Automatic planning respects your saved study hours, weekly commitments, breaks, daily limit, task priority and deadlines. Manually arranged and completed sessions stay in your timetable.</p>'+(pending.length?'':'<p class="small">No pending tasks right now. You can still add a personal study session.</p>');
+    const viewSwitch='<div class="ta-view-switch" role="group" aria-label="Schedule view"><button type="button" data-ta-action="view" data-view="grid" class="'+(scheduleView==='grid'?'is-active':'')+'" aria-pressed="'+(scheduleView==='grid')+'">WEEKLY GRID</button><button type="button" data-ta-action="view" data-view="agenda" class="'+(scheduleView==='agenda'?'is-active':'')+'" aria-pressed="'+(scheduleView==='agenda')+'">AGENDA</button></div>';
+    const schedule=scheduleView==='agenda'?'<div class="ta-agenda-list">'+agenda+'</div>':'<div class="ta-week-grid">'+cards+'</div>';
+    root.innerHTML='<div class="topbar"><div><div class="water-kicker">MAKE A HOME FOR YOUR STUDY ✦</div><h2>🗓️ Time Architect</h2></div><div class="ta-heading-tools"><span id="taSaveStatus" class="ta-save-status" data-state="'+saveStatus+'" role="status" aria-live="polite">'+esc(statusLabel)+'</span><button type="button" class="small ghost" onclick="showView(\'home\')">← Main Menu</button></div></div><p class="ta-intro">Your tasks show what needs doing. Your timetable helps decide when you will work on them. Sessions are saved automatically on this device.</p><div class="ta-actions"><button type="button" onclick="taAddSession()">＋ Add a session</button><button type="button" class="secondary" onclick="taGenerate()">✦ Build my timetable</button><button type="button" class="ghost" onclick="taReschedule()">Reschedule unfinished</button><button type="button" class="ghost" onclick="taAvailability()">⚙ My availability</button></div><div id="taNotice" class="ta-msg" role="status" aria-live="polite"></div>'+nav+summary+viewSwitch+schedule+(visibleSessions.length?'':'<p class="ta-week-empty-note">Your week is open. Add a study session or build a timetable from your pending tasks.</p>')+'<p class="ta-calendar-note">Automatic planning respects your saved study hours, weekly commitments, breaks, daily limit, task priority and deadlines. Manually arranged and completed sessions stay in your timetable.</p>'+(pending.length?'':'<p class="small">No pending tasks right now. You can still add a personal study session.</p>');
   }
   function exportSnapshot() {
     const days=[];for(let i=0;i<7;i++){const date=addDays(weekAnchor,i),key=dateKey(date);days.push({date:key,label:date.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'}),shortLabel:date.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}),sessions:dateSessions(key).map(clone)});}
@@ -521,7 +552,7 @@
   }
   function exportIcs() {
     const data=exportSnapshot(),stamp=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z'),lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ENGENEVERSE//Time Architect//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:ENGENEVERSE Study Timetable'];
-    data.all.forEach(session=>{const start=session.date.replace(/-/g,'')+'T'+session.start.replace(':','')+'00',endMinuteValue=endMinute(session),endDate=endMinuteValue>=1440?dateKey(addDays(parseDate(session.date),1)).replace(/-/g,''):session.date.replace(/-/g,''),end=(endMinuteValue>=1440?'00:00':timeString(endMinuteValue));lines.push('BEGIN:VEVENT','UID:'+icalEscape(session.id)+'@engeneverse.local','DTSTAMP:'+stamp,'DTSTART:'+start,'DTEND:'+endDate+'T'+end.replace(':','')+'00','SUMMARY:'+icalEscape(displayTitle(session)),'CATEGORIES:'+icalEscape(displaySubject(session)),'DESCRIPTION:'+icalEscape(displaySubject(session)+' · '+session.duration+' minutes'+(session.done?' · completed':'')),'X-ENGENEVERSE-COMPLETED:'+(session.done?'TRUE':'FALSE'),'END:VEVENT');});
+    data.all.forEach(session=>{const start=session.date.replace(/-/g,'')+'T'+session.start.replace(':','')+'00',endMinuteValue=endMinute(session),endDate=endMinuteValue>=1440?dateKey(addDays(parseDate(session.date),1)).replace(/-/g,''):session.date.replace(/-/g,''),end=clockString(endMinuteValue);lines.push('BEGIN:VEVENT','UID:'+icalEscape(session.id)+'@engeneverse.local','DTSTAMP:'+stamp,'DTSTART:'+start,'DTEND:'+endDate+'T'+end.replace(':','')+'00','SUMMARY:'+icalEscape(displayTitle(session)),'CATEGORIES:'+icalEscape(displaySubject(session)),'DESCRIPTION:'+icalEscape(displaySubject(session)+' · '+session.duration+' minutes'+(session.done?' · completed':'')),'X-ENGENEVERSE-COMPLETED:'+(session.done?'TRUE':'FALSE'),'END:VEVENT');});
     lines.push('END:VCALENDAR');const body=lines.map(foldIcalLine).join('\r\n')+'\r\n';downloadBlob(new Blob([body],{type:'text/calendar;charset=utf-8'}),weekFilename('ics',data));if(typeof toast==='function')toast('Calendar file downloaded.');
   }
   function printTimetable() {
@@ -568,6 +599,8 @@
     if(action==='edit')editSession(id);
     if(action==='delete')deleteSession(id);
     if(action==='toggle-day'){const date=button.dataset.date;if(date){selectedDate=date;if(expandedDays.has(date))expandedDays.delete(date);else expandedDays.add(date);render();}}
+    if(action==='select-day'){const date=button.dataset.date;if(validDateKey(date)){selectedDate=date;render();}}
+    if(action==='view'){const view=button.dataset.view;if(view==='grid'||view==='agenda'){scheduleView=view;render();}}
     if(action==='week')window.taMoveWeek(Number(button.dataset.delta)||0);
     if(action==='today')window.taGoToday();
     if(action==='export-pdf'){button.closest('details')?.removeAttribute('open');exportPdf();}

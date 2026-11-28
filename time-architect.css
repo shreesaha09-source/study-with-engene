@@ -216,3 +216,57 @@
 }
 .ta-day-task-progress{display:grid;gap:6px;margin:0 12px 10px;padding:9px 10px;border:1px solid #efe5e7;border-radius:11px;background:#fffaf8}.ta-progress-caption{color:#816c74;font-size:9px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}.ta-task-progress{display:flex;align-items:center;justify-content:space-between;gap:8px}.ta-task-progress b{overflow:hidden;color:#54283a;font-size:10px;text-overflow:ellipsis;white-space:nowrap}.ta-task-progress span{color:#746970;font-size:9px;text-align:right}
 @media(max-width:600px){.ta-task-progress{align-items:flex-start;flex-direction:column;gap:2px}.ta-task-progress span{text-align:left}}
+
+/* Compact seven-day calendar and date-grouped agenda views. */
+.ta-week-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;align-items:start;min-width:0}
+.ta-day{align-self:start;min-width:0;min-height:0;height:fit-content;overflow:visible;border-color:#eadde1;border-radius:13px;background:#fffdfc;box-shadow:0 2px 9px #54253707}
+.ta-day.is-today{border-color:#8b2947;background:#fffaf9;box-shadow:inset 0 0 0 1px #8b29471a}
+.ta-day.is-selected{box-shadow:inset 0 0 0 1px #a85670}
+.ta-day.is-today.is-selected{box-shadow:inset 0 0 0 1px #8b2947}
+.ta-day-head{display:grid;grid-template-columns:minmax(0,1fr) 27px;grid-template-rows:auto auto;align-items:center;gap:2px 5px;padding:7px;border-bottom:1px solid #f0e5e8;background:#fff9fa}
+.ta-day-heading{grid-column:1;grid-row:1;display:flex;align-items:center;justify-content:space-between;gap:4px;min-width:0}
+.ta-day-title{display:grid;justify-items:start;gap:1px;min-width:0;padding:0;border:0;background:transparent;color:#513943;text-align:left;box-shadow:none;cursor:pointer}
+.ta-day-name{font-size:12px;line-height:1.15;font-weight:850}
+.ta-day-date{color:#8a7881;font-size:9px;line-height:1.2;font-weight:700;white-space:nowrap}
+.ta-day-count{grid-column:1;grid-row:2;justify-self:start;color:#88777f;font-size:9px;font-weight:700;text-align:left}
+.ta-day-add{grid-column:2;grid-row:1/3;align-self:center;width:25px;height:25px;padding:0;border:1px solid #e8cfd7;border-radius:8px;background:#fff;color:#74243e;font-size:16px;font-weight:700;line-height:1;box-shadow:none}
+.ta-today-label{flex:none;padding:2px 5px;border-radius:99px;background:#f6e7eb;color:#812641;font-size:8px;font-weight:850;letter-spacing:.04em;text-transform:uppercase}
+.ta-day-sessions{display:grid;align-content:start;gap:5px;padding:6px}
+.ta-empty-day{padding:5px 2px;color:#95868d;font-size:9px;line-height:1.35;text-align:left}
+.ta-session{min-width:0;padding:6px;border-left-width:2px;border-radius:9px}
+.ta-session-meta{gap:4px}
+.ta-session-time{font-size:9px;line-height:1.2}
+.ta-session-duration{font-size:8px}
+.ta-session-title{margin:3px 0 2px;font-size:11px;line-height:1.25;-webkit-line-clamp:2}
+.ta-session-subline{align-items:flex-start;gap:4px}
+.ta-session-subject{font-size:9px;line-height:1.2}
+.ta-session-state{font-size:8px;line-height:1.2}
+.ta-session-context{display:block;width:fit-content;max-width:100%;margin-top:3px;padding:2px 5px;border-radius:99px;background:#f5f1f2;color:#81717a;font-size:8px;line-height:1.25;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ta-session-context.is-linked{background:#f7e9ee;color:#762942}
+.ta-session-actions{gap:4px;margin-top:5px}
+.ta-complete-action{min-height:25px;padding:3px 6px;font-size:9px}
+.ta-session-menu>summary{width:26px;height:25px}
+.ta-session-note{margin-top:4px;padding-top:4px;font-size:9px}
+.ta-view-switch{display:inline-flex;align-items:center;gap:3px;margin:0 0 10px;padding:4px;border:1px solid #eadde1;border-radius:11px;background:#fff8}
+.ta-view-switch button{min-height:30px;padding:6px 11px;border:0;border-radius:8px;background:transparent;color:#786872;font-size:10px;font-weight:850;letter-spacing:.04em;box-shadow:none}
+.ta-view-switch button:hover{transform:none;background:#f8eef1;color:#64243b}
+.ta-view-switch button.is-active{background:#74243e;color:#fff}
+.ta-view-switch button:focus-visible{outline:2px solid #a85670;outline-offset:2px}
+.ta-agenda-list{display:grid;gap:8px;min-width:0}
+.ta-agenda-day{display:grid;grid-template-columns:minmax(150px,205px) minmax(0,1fr);align-items:start;gap:8px;padding:8px;border:1px solid #eadde1;border-radius:14px;background:#fffdfc;box-shadow:0 2px 9px #54253707}
+.ta-agenda-day>.ta-day-head{grid-column:1;grid-row:1;align-self:start;border:1px solid #f0e5e8;border-radius:10px;background:#fff9fa}
+.ta-agenda-day.is-today>.ta-day-head{border-color:#ead1d8;background:#fff7f6}
+.ta-agenda-sessions{grid-column:2;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));align-content:start;gap:6px;min-width:0}
+.ta-agenda-sessions>.ta-empty-day{align-self:center;padding:8px 5px}
+@media(max-width:1000px){.ta-week-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:760px){.ta-week-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ta-agenda-day{grid-template-columns:minmax(120px,160px) minmax(0,1fr)}}
+@media(max-width:560px){.ta-week-grid{grid-template-columns:1fr;gap:7px}.ta-day-head{grid-template-columns:minmax(0,1fr) 30px;padding:9px}.ta-day-name{font-size:14px}.ta-day-date,.ta-day-count{font-size:10px}.ta-day-sessions{padding:7px}.ta-session{padding:8px}.ta-session-time{font-size:10px}.ta-session-title{font-size:12px}.ta-session-subject{font-size:10px}.ta-session-state,.ta-session-context{font-size:9px}.ta-complete-action,.ta-session-menu>summary{min-height:32px}.ta-session-menu>summary{width:30px;height:30px}.ta-agenda-day{grid-template-columns:minmax(0,1fr);gap:6px;padding:7px}.ta-agenda-day>.ta-day-head,.ta-agenda-sessions{grid-column:1}.ta-agenda-day>.ta-day-head{grid-row:1}.ta-agenda-sessions{grid-row:2;grid-template-columns:1fr}.ta-agenda-day .ta-session{padding:8px}}
+
+.ta-msg.is-warning{color:#744a24}
+.ta-limit-warning{display:grid;gap:7px;padding:10px 12px;border:1px solid #e8d4b4;border-radius:11px;background:#fff9ed;color:#684821;font-weight:500}
+.ta-limit-warning strong{font-size:12px;font-weight:850}
+.ta-limit-warning>span{font-size:11px;line-height:1.45}
+.ta-limit-warning-actions{display:flex;gap:7px;flex-wrap:wrap}
+.ta-limit-warning-actions button{min-height:32px;padding:6px 10px;border-radius:9px;font-size:11px;font-weight:800}
+.ta-limit-warning-actions button:first-child{border:1px solid #e5d7c3;background:#fff;color:#684821;box-shadow:none}
+.ta-limit-warning-actions button:first-child:hover{background:#f8f0e2}
