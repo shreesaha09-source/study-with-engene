@@ -137,7 +137,7 @@
       if (snapshot.source === 'legacy') stopTimer();
       else resetWorkspaceTimer();
     }
-    if (workspaceModel.timer.endAt) resetWorkspaceTimer();
+
     const total = Math.max(60, Math.round(Number(task.duration || settings.defaultDuration || 25) * 60));
     const hours = Math.floor(total / 3600);
     const minutes = Math.floor(total % 3600 / 60);
@@ -167,16 +167,6 @@
     const before = Number(stats.studySeconds) || 0;
     previousAccountTimerStudyTime.call(this, now);
     creditTaskProgress(sessionTask?.no, (Number(stats.studySeconds) || 0) - before);
-  };
-
-  const previousAccountWorkspaceTimer = window.accountWorkspaceTimer;
-  window.accountWorkspaceTimer = function (now) {
-    const startingMode = workspaceModel.timer.mode;
-    const transitions = previousAccountWorkspaceTimer.call(this, now);
-    const focusSessions = startingMode === 'focus' ? Math.ceil(transitions / 2) : Math.floor(transitions / 2);
-    if (transitions > 0) beep();
-    recordCompletedSessions(focusSessions);
-    return transitions;
   };
 
   const previousTimerTick = window.timerTick;
