@@ -312,6 +312,7 @@ tbody tr:nth-child(even){background:#fff9fb}tbody tr:hover{background:color-mix(
 /* Dashboard: keep the countdown in the top row between the greeting and stats. */
 .dashboard{grid-template-columns:minmax(250px,1fr) minmax(220px,.9fr) minmax(500px,1.7fr);grid-template-areas:"intro exam stats" "companion companion notes";align-items:stretch}
 .dashboard-intro{grid-area:intro;min-width:0}
+@media(min-width:1051px){.dashboard-intro>h2{font-size:clamp(15px,1.7vw,20px);line-height:1.2;white-space:nowrap}}
 .dashboard .statgrid{grid-area:stats;grid-template-columns:repeat(2,minmax(0,1fr));align-self:start}
 .dashboard .home-companion{grid-area:companion;margin:0;height:100%;min-height:174px}
 .dashboard-notes-card{grid-area:notes;width:100%;min-width:0;min-height:100%;display:grid;grid-template-columns:54px minmax(0,1fr) auto;align-items:center;gap:13px;padding:20px;border:1px solid var(--border);border-radius:18px;background:linear-gradient(145deg,color-mix(in srgb,var(--accent-faint) 64%,white),rgba(255,255,255,.97));color:var(--text);text-align:left;box-shadow:0 10px 28px #30101a10}
